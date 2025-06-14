@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity6">
+<body>
+    <div th:fragment="content">
+        <div class="row">
+            <div class="col-12">
+                <!-- Question Title and Actions -->
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h1 th:text="${question.title}">Question Title</h1>
+                    <div sec:authorize="isAuthenticated()"
+                         th:if="${currentUser != null && currentUser.id == question.user.id}">
+                        <a th:href="@{/questions/{id}/edit(id=${question.id})}" class="btn btn-outline-primary me-2">
+                            Edit
+                        </a>
+                        <form th:action="@{/questions/{id}/delete(id=${question.id})}" method="post" class="d-inline">
+                            <button type="submit" class="btn btn-outline-danger"
+                                    onclick="return confirm('Are you sure you want to delete this question?')">
+                                Delete
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Question Details -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <div class="d-flex">
+                            <!-- Voting -->
+                            <div class="vote-container me-3 text-center" sec:authorize="isAuthenticated()">
+                                <button class="vote-button upvote"
+                                        th:classappend="${currentUser != null && question.user.id != currentUser.id &&
+                                                        voteService.hasUserVotedOnQuestion(currentUser, question, T(com.devik.sage.model.Vote.VoteType).UPVOTE) ? 'active' : ''}"
+                                        th:data-url="@{/votes/question/{id}/upvote(id=${question.id})}">
+                                    <i class="fas fa-caret-up"></i>
+                                </button>
+                                <div class="vote-count my-1" th:text="${question.upvoteCount - question.downvoteCount}">0</div>
+                                <button class="vote-button downvote"
+                                        th:classappend="${currentUser != null && question.user.id != currentUser.id &&
+                                                        voteService.hasUserVotedOnQuestion(currentUser, question, T(com.devik.sage.model.Vote.VoteType).DOWNVOTE) ? 'active' : ''}"
+                                        th:data-url="@{/votes/question/{id}/downvote(id=${question.id})}">
+                                    <i class="fas fa-caret-down"></i>
+                                </button>
+                            </div>
+
+                            <!-- Question Content -->
+                            <div class="flex-grow-1">
+                                <div class="markdown-body" th:utext="${question.body}">
+                                    Question content...
+                                </div>
+                                <div class="d-flex justify-content-between mt-4">
+                                    <!-- Tags -->
+                                    <div class="tags">
+                                        <a th:each="tag : ${question.tags}" class="tag" th:href="@{/questions/tagged/{name}(name=${tag.name})}"
+                                           th:text="${tag.name}">tag</a>
+                                    </div>
+                                    <!-- User Info -->
+                                    <div class="user-box p-2 bg-light">
+                                        <div class="small text-muted">
+                                            asked <span th:text="${#temporals.format(question.createdAt, 'MMM d, yyyy')}">Jan 1, 2023</span>
+                                        </div>
+                                        <div>
+                                            <a th:href="@{/users/{id}(id=${question.user.id})}" th:text="${question.user.displayName}">Username</a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Question Comments -->
+                <div class="mb-4 ms-5">
+                    <h6 class="comments-heading mb-2">Comments:</h6>
+                    <div class="comment-list">
+                        <div th:each="comment : ${questionComments}" class="comment">
+                            <span th:utext="${comment.body}"></span>
+                            <span class="text-muted">
+                                – <a th:href="@{/users/{id}(id=${comment.user.id})}" th:text="${comment.user.displayName}">User</a>
+                                <span th:text="${#temporals.format(comment.createdAt, 'MMM d, yyyy')}">Jan 1, 2023</span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Add Comment Form -->
+                    <div sec:authorize="isAuthenticated()" class="mt-2">
+                        <form th:action="@{/comments/question/{id}(id=${question.id})}" method="post">
+                            <div class="input-group">
+                                <input type="text" name="body" class="form-control form-control-sm"
+                                       placeholder="Add a comment..." required>
+                                <button type="submit" class="btn btn-sm btn-outline-secondary">Add</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Answers Section -->
+                <div class="answers-section mb-4">
+                    <h3 th:text="${answers.size() + ' Answer' + (answers.size() != 1 ? 's' : '')}">0 Answers</h3>
+
+                    <!-- Answer List -->
+                    <div th:each="answer : ${answers}" class="card mb-3" th:classappend="${answer.accepted ? 'border-success' : ''}">
+                        <div class="card-body">
+                            <div class="d-flex">
+                                <!-- Voting -->
+                                <div class="vote-container me-3 text-center" sec:authorize="isAuthenticated()">
+                                    <button class="vote-button upvote"
+                                            th:classappend="${currentUser != null && answer.user.id != currentUser.id &&
+                                                            voteService.hasUserVotedOnAnswer(currentUser, answer, T(com.devik.sage.model.Vote.VoteType).UPVOTE) ? 'active' : ''}"
+                                            th:data-url="@{/votes/answer/{id}/upvote(id=${answer.id})}">
+                                        <i class="fas fa-caret-up"></i>
+                                    </button>
+                                    <div class="vote-count my-1" th:text="${answer.upvoteCount - answer.downvoteCount}">0</div>
+                                    <button class="vote-button downvote"
+                                            th:classappend="${currentUser != null && answer.user.id != currentUser.id &&
+                                                            voteService.hasUserVotedOnAnswer(currentUser, answer, T(com.devik.sage.model.Vote.VoteType).DOWNVOTE) ? 'active' : ''}"
+                                            th:data-url="@{/votes/answer/{id}/downvote(id=${answer.id})}">
+                                        <i class="fas fa-caret-down"></i>
+                                    </button>
+
+                                    <!-- Accept Answer Button (Only for question author) -->
+                                    <div th:if="${currentUser != null && question.user.id == currentUser.id}" class="mt-2">
+                                        <form th:action="@{/answers/{id}/accept(id=${answer.id})}" method="post">
+                                            <button type="submit" class="btn btn-sm btn-outline-success" title="Accept this answer"
+                                                    th:classappend="${answer.accepted ? 'active' : ''}"
+                                                    th:disabled="${answer.accepted}">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+
+                                    <!-- Accepted Answer Badge -->
+                                    <div th:if="${answer.accepted}" class="mt-2 text-success">
+                                        <i class="fas fa-check-circle"></i>
+                                        <div><small>Accepted</small></div>
+                                    </div>
+                                </div>
+
+                                <!-- Answer Content -->
+                                <div class="flex-grow-1">
+                                    <div class="markdown-body" th:utext="${answer.body}">
+                                        Answer content...
+                                    </div>
+
+                                    <!-- Answer Author Info -->
+                                    <div class="d-flex justify-content-end mt-3">
+                                        <div class="user-box p-2 bg-light">
+                                            <div class="small text-muted">
+                                                answered <span th:text="${#temporals.format(answer.createdAt, 'MMM d, yyyy')}">Jan 1, 2023</span>
+                                            </div>
+                                            <div>
+                                                <a th:href="@{/users/{id}(id=${answer.user.id})}" th:text="${answer.user.displayName}">Username</a>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Answer Controls -->
+                                    <div sec:authorize="isAuthenticated()"
+                                         th:if="${currentUser != null && currentUser.id == answer.user.id}"
+                                         class="mt-2 text-end">
+                                        <a th:href="@{/answers/{id}/edit(id=${answer.id})}" class="btn btn-sm btn-outline-primary me-2">
+                                            Edit
+                                        </a>
+                                        <form th:action="@{/answers/{id}/delete(id=${answer.id})}" method="post" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                    onclick="return confirm('Are you sure you want to delete this answer?')">
+                                                Delete
+                                            </button>
+                                        </form>
+                                    </div>
+
+                                    <!-- Answer Comments -->
+                                    <div class="answer-comments mt-3">
+                                        <div class="comment-list">
+                                            <div th:each="comment : ${answerComments[answer.id]}" class="comment">
+                                                <span th:utext="${comment.body}"></span>
+                                                <span class="text-muted">
+                                                    – <a th:href="@{/users/{id}(id=${comment.user.id})}" th:text="${comment.user.displayName}">User</a>
+                                                    <span th:text="${#temporals.format(comment.createdAt, 'MMM d, yyyy')}">Jan 1, 2023</span>
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <!-- Add Comment to Answer Form -->
+                                        <div sec:authorize="isAuthenticated()" class="mt-2">
+                                            <form th:action="@{/comments/answer/{id}(id=${answer.id})}" method="post">
+                                                <div class="input-group">
+                                                    <input type="text" name="body" class="form-control form-control-sm"
+                                                           placeholder="Add a comment..." required>
+                                                    <button type="submit" class="btn btn-sm btn-outline-secondary">Add</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Your Answer Form -->
+                <div sec:authorize="isAuthenticated()" class="answer-form-section">
+                    <h3>Your Answer</h3>
+                    <form th:action="@{/answers/question/{id}(id=${question.id})}" method="post">
+                        <div class="mb-3">
+                            <textarea name="body" id="answer-body" class="form-control" rows="8" required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Post Your Answer</button>
+                    </form>
+                </div>
+
+                <!-- Login Prompt for Anonymous Users -->
+                <div sec:authorize="!isAuthenticated()" class="card mt-4">
+                    <div class="card-body text-center">
+                        <p class="mb-0">
+                            <a th:href="@{/login}">Log in</a> or <a th:href="@{/register}">sign up</a> to answer this question.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+

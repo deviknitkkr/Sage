@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity6">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log in - Sage Q&A</title>
+    <link rel="icon" type="image/svg+xml" th:href="@{/images/sage-favicon.svg}">
+    <link rel="stylesheet" th:href="@{/css/auth.css}">
+</head>
+<body>
+    <div th:fragment="content">
+        <div class="auth-page">
+            <div class="auth-container">
+                <div class="auth-logo">
+                    <a th:href="@{/}">
+                        <img th:src="@{/images/sage-logo.svg}" alt="Sage Logo" height="50">
+                    </a>
+                </div>
+
+                <h1 class="auth-heading">Log in to your account</h1>
+
+                <div th:if="${param.error}" class="auth-alert auth-alert-danger">
+                    Invalid username or password.
+                </div>
+                <div th:if="${param.logout}" class="auth-alert auth-alert-success">
+                    You have been logged out.
+                </div>
+                <div th:if="${param.registered}" class="auth-alert auth-alert-success">
+                    Registration successful! You can now log in.
+                </div>
+
+                <div class="auth-card">
+                    <form th:action="@{/login}" method="post" class="auth-form">
+                        <div class="form-group">
+                            <label for="username">Email or Username</label>
+                            <input type="text" id="username" name="username" class="form-control" required autofocus>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="password">Password</label>
+                            <input type="password" id="password" name="password" class="form-control" required>
+                        </div>
+
+                        <div class="form-group">
+                            <div class="form-check">
+                                <input type="checkbox" id="remember-me" name="remember-me" class="form-check-input">
+                                <label for="remember-me" class="form-check-label">Remember me</label>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="auth-btn">Log in</button>
+                    </form>
+                </div>
+
+                <div class="auth-card">
+                    <div class="text-center">
+                        Don't have an account? <a th:href="@{/register}" class="auth-link">Sign up</a>
+                    </div>
+                </div>
+
+                <div class="auth-footer">
+                    By clicking "Log in", you agree to our
+                    <a href="#">terms of service</a>,
+                    <a href="#">privacy policy</a> and
+                    <a href="#">cookie policy</a>.
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+

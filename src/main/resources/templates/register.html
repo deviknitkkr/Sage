@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity6">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign up - Sage Q&A</title>
+    <link rel="icon" type="image/svg+xml" th:href="@{/images/sage-favicon.svg}">
+    <link rel="stylesheet" th:href="@{/css/auth.css}">
+</head>
+<body>
+    <div th:fragment="content">
+        <div class="auth-page">
+            <div class="auth-container">
+                <div class="auth-logo">
+                    <a th:href="@{/}">
+                        <img th:src="@{/images/sage-logo.svg}" alt="Sage Logo" height="50">
+                    </a>
+                </div>
+
+                <h1 class="auth-heading">Create your account</h1>
+
+                <div class="auth-card">
+                    <form th:action="@{/register}" th:object="${user}" method="post" class="auth-form">
+                        <div class="form-group">
+                            <label for="username">Username</label>
+                            <input type="text" th:field="*{username}" id="username" class="form-control"
+                                  required minlength="3" maxlength="50">
+                            <div class="form-text" th:if="${#fields.hasErrors('username')}"
+                                 th:errors="*{username}">Username error</div>
+                            <div class="form-text" th:if="${usernameError}" th:text="${usernameError}"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="email">Email</label>
+                            <input type="email" th:field="*{email}" id="email" class="form-control"
+                                  required maxlength="50">
+                            <div class="form-text" th:if="${#fields.hasErrors('email')}"
+                                 th:errors="*{email}">Email error</div>
+                            <div class="form-text" th:if="${emailError}" th:text="${emailError}"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="password">Password</label>
+                            <input type="password" th:field="*{password}" id="password" class="form-control"
+                                  required minlength="6" maxlength="120">
+                            <div class="form-text" th:if="${#fields.hasErrors('password')}"
+                                 th:errors="*{password}">Password error</div>
+                            <div class="form-text">Passwords must be at least 6 characters long</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="displayName">Display Name <span class="form-text">(optional)</span></label>
+                            <input type="text" th:field="*{displayName}" id="displayName" class="form-control"
+                                  maxlength="50">
+                            <div class="form-text">Leave blank to use username as display name</div>
+                            <div class="form-text" th:if="${#fields.hasErrors('displayName')}"
+                                 th:errors="*{displayName}">Display name error</div>
+                        </div>
+
+                        <button type="submit" class="auth-btn">Sign up</button>
+                    </form>
+                </div>
+
+                <div class="auth-card">
+                    <div class="text-center">
+                        Already have an account? <a th:href="@{/login}" class="auth-link">Log in</a>
+                    </div>
+                </div>
+
+                <div class="auth-footer">
+                    By clicking "Sign up", you agree to our
+                    <a href="#">terms of service</a>,
+                    <a href="#">privacy policy</a> and
+                    <a href="#">cookie policy</a>.
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+
