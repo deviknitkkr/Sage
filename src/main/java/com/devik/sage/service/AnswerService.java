@@ -27,6 +27,11 @@ public class AnswerService {
                 .orElseThrow(() -> new RuntimeException("Answer not found with ID: " + answerId));
     }
 
+    // Method to get only the answer count for a question, avoiding lazy loading issues
+    public int getAnswerCountByQuestionId(Long questionId) {
+        return answerRepository.countByQuestionId(questionId);
+    }
+
     @Transactional
     public Answer createAnswer(Long questionId, String body, User currentUser) {
         Question question = questionRepository.findById(questionId)

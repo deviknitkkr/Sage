@@ -49,8 +49,8 @@
                                 <div class="count" th:text="${question.upvoteCount - question.downvoteCount}">0</div>
                                 <div class="label text-muted small">votes</div>
                             </div>
-                            <div class="answers" th:classappend="${question.answers.size() > 0 ? 'answered' : ''}">
-                                <div class="count" th:text="${question.answers.size()}">0</div>
+                            <div class="answers" th:classappend="${answerCountMap[question.id] > 0 ? 'answered' : ''}">
+                                <div class="count" th:text="${answerCountMap[question.id]}">0</div>
                                 <div class="label text-muted small">answers</div>
                             </div>
                             <div class="views mt-2">

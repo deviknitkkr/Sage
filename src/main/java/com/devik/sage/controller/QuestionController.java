@@ -41,9 +41,19 @@ public class QuestionController {
 
         // Get questions page object
         Page<Question> questionsPage = questionService.getAllQuestions(page, size);
+        List<Question> questions = questionsPage.getContent();
+
+        // Create map of question id to answer count to avoid lazy loading issues
+        Map<Long, Integer> answerCountMap = new HashMap<>();
+        for (Question question : questions) {
+            // Get answer count for each question
+            int answerCount = answerService.getAnswerCountByQuestionId(question.getId());
+            answerCountMap.put(question.getId(), answerCount);
+        }
 
         // Add all necessary attributes to the model
-        model.addAttribute("questions", questionsPage.getContent());
+        model.addAttribute("questions", questions);
+        model.addAttribute("answerCountMap", answerCountMap);
         model.addAttribute("currentPage", page);
         model.addAttribute("totalPages", questionsPage.getTotalPages());
         model.addAttribute("popularTags", tagService.getPopularTags(size));
@@ -91,14 +101,26 @@ public class QuestionController {
         // Increment view count
         questionService.incrementViewCount(id);
 
+        // Get answers and comments separately to avoid lazy loading issues
         List<Answer> answers = answerService.getAnswersByQuestion(id);
         List<Comment> questionComments = commentService.getCommentsByQuestion(id);
+
+        // Create a map of answer id -> list of comments for that answer
+        Map<Long, List<Comment>> answerComments = new HashMap<>();
+        for (Answer answer : answers) {
+            List<Comment> comments = commentService.getCommentsByAnswer(answer.getId());
+            answerComments.put(answer.getId(), comments);
+        }
 
         model.addAttribute("question", question);
         model.addAttribute("answers", answers);
         model.addAttribute("questionComments", questionComments);
+        model.addAttribute("answerComments", answerComments);
         model.addAttribute("answer", new Answer());  // For new answer form
         model.addAttribute("comment", new Comment()); // For new comment form
+
+        // Add a pre-calculated answer count to avoid ConcurrentModificationException
+        model.addAttribute("answersCount", answers.size());
 
         if (userDetails != null) {
             User currentUser = userService.findByUsername(userDetails.getUsername()).orElse(null);

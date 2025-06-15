@@ -17,9 +17,12 @@
         document.addEventListener('DOMContentLoaded', function() {
             // Initialize markdown editor for answer
             let answerEditor;
-            if(document.getElementById('answerBody')) {
+            const answerBodyEl = document.getElementById('answerEditor');
+            const answerHiddenField = document.getElementById('answerBody');
+
+            if(answerBodyEl) {
                 answerEditor = new SimpleMDE({
-                    element: document.getElementById("answerBody"),
+                    element: answerBodyEl,
                     spellChecker: false,
                     toolbar: [
                         "bold", "italic", "heading", "|",
@@ -29,33 +32,35 @@
                     ]
                 });
 
-                // Handle form submission to ensure SimpleMDE content is submitted
+                // Immediately sync value to hidden field
+                if (answerHiddenField) {
+                    answerHiddenField.value = answerEditor.value();
+                }
+
+                // Add input event listener to update hidden field when editor changes
+                answerEditor.codemirror.on("change", function() {
+                    if (answerHiddenField) {
+                        answerHiddenField.value = answerEditor.value();
+                    }
+                });
+
+                // Handle form submission
                 const answerForm = document.querySelector('form[action^="/answers/question/"]');
                 if (answerForm) {
                     answerForm.addEventListener('submit', function(event) {
-                        // Prevent default form submission
-                        event.preventDefault();
-
                         // Get the editor content and ensure it's not empty
                         const content = answerEditor.value().trim();
 
                         if (!content) {
+                            event.preventDefault();
                             alert("Please enter your answer before submitting.");
                             return;
                         }
 
-                        // Set the value directly to the textarea
-                        const textarea = document.getElementById('answerBody');
-                        textarea.value = content;
-
-                        // Make sure the textarea is not hidden by SimpleMDE's CSS
-                        textarea.style.display = 'block';
-                        textarea.style.visibility = 'visible';
-                        textarea.style.height = '1px';
-                        textarea.style.position = 'absolute';
-
-                        // Submit the form manually
-                        this.submit();
+                        // Make sure hidden field is updated with the latest content
+                        if (answerHiddenField) {
+                            answerHiddenField.value = content;
+                        }
                     });
                 }
             }
@@ -255,13 +260,14 @@
             <div class="answers-section">
                 <div class="answers-header">
                     <h2>
-                        <span th:text="${question.answers.size()}">0</span> Answers
+                        <span th:text="${answersCount}">0</span> Answers
                     </h2>
                 </div>
 
                 <!-- Answers list -->
                 <div class="answers-list">
-                    <div th:each="answer : ${question.answers}" class="answer">
+                    <!-- Using the answers from the model instead of question.answers -->
+                    <div th:each="answer : ${answers}" class="answer">
                         <div class="d-flex">
                             <!-- Voting controls -->
                             <div class="voting">
@@ -322,7 +328,8 @@
                                 <!-- Comments section -->
                                 <div class="comments-section">
                                     <div class="comments-list">
-                                        <div th:each="comment : ${answer.comments}" class="comment">
+                                        <!-- We retrieve comments from answerComments map using answer id as key -->
+                                        <div th:each="comment : ${answerComments[answer.id]}" class="comment">
                                             <div class="comment-text" th:text="${comment.body}">Comment text</div>
                                             <div class="comment-meta">
                                                 – <a th:href="@{/users/{id}(id=${comment.user.id})}" th:text="${comment.user.username}">username</a>
@@ -351,7 +358,8 @@
                     <h2>Your Answer</h2>
                     <form th:action="@{/answers/question/{id}(id=${question.id})}" method="post">
                         <div class="form-group mb-3">
-                            <textarea id="answerBody" name="body" class="form-control" rows="10" required></textarea>
+                            <textarea id="answerEditor" class="form-control" rows="10" placeholder="Write your answer here..."></textarea>
+                            <input type="hidden" id="answerBody" name="body" required>
                         </div>
                         <button type="submit" class="btn btn-primary">Post Your Answer</button>
                     </form>
