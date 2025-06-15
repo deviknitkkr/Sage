@@ -37,8 +37,15 @@ public class VoteController {
         Vote vote = voteService.voteQuestion(id, currentUser, Vote.VoteType.UPVOTE);
 
         Map<String, Object> response = new HashMap<>();
-        response.put("success", true);
-        response.put("voteStatus", vote != null ? vote.getVoteType().toString() : "NONE");
+        if (vote == null) {
+            // Handling the case when a user tries to vote on their own content
+            response.put("success", false);
+            response.put("message", "You cannot vote on your own question");
+            response.put("voteStatus", "NONE");
+        } else {
+            response.put("success", true);
+            response.put("voteStatus", vote.getVoteType().toString());
+        }
 
         return ResponseEntity.ok(response);
     }

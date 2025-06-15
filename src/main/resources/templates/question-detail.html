@@ -32,9 +32,23 @@
                 // Handle form submission to ensure SimpleMDE content is submitted
                 const answerForm = document.querySelector('form[action^="/answers/question/"]');
                 if (answerForm) {
-                    answerForm.addEventListener('submit', function() {
-                        // Update textarea with SimpleMDE content before submission
-                        document.getElementById('answerBody').value = answerEditor.value();
+                    answerForm.addEventListener('submit', function(event) {
+                        // Prevent default form submission
+                        event.preventDefault();
+
+                        // Get the editor content and ensure it's not empty
+                        const content = answerEditor.value().trim();
+
+                        if (!content) {
+                            alert("Please enter your answer before submitting.");
+                            return;
+                        }
+
+                        // Set the value to the hidden input or textarea
+                        document.getElementById('answerBody').value = content;
+
+                        // Submit the form manually
+                        this.submit();
                     });
                 }
             }
@@ -52,40 +66,89 @@
             // Voting functionality
             document.querySelectorAll('.vote-button').forEach(button => {
                 button.addEventListener('click', function(e) {
+                    e.preventDefault();
                     const url = this.getAttribute('data-url');
                     if (!url) return;
 
+                    // Get the CSRF token
+                    const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
+                    const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content');
+
+                    const headers = {
+                        'Content-Type': 'application/json'
+                    };
+
+                    // Add CSRF token if available
+                    if (csrfToken && csrfHeader) {
+                        headers[csrfHeader] = csrfToken;
+                    }
+
                     fetch(url, {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="_csrf"]').getAttribute('content')
-                        },
+                        headers: headers,
+                        credentials: 'same-origin'
                     })
-                    .then(response => response.json())
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    })
                     .then(data => {
                         if (data.success) {
-                            // Update vote count
-                            const voteCount = this.parentElement.querySelector('.vote-count');
-                            if (voteCount) {
-                                voteCount.textContent = data.voteCount;
+                            // Get the vote count element
+                            const voteCountElement = this.closest('.voting').querySelector('.vote-count');
+                            if (voteCountElement) {
+                                // Calculate vote count directly from the data returned from the vote action
+                                // Instead of making another request to a non-existent endpoint
+                                const isQuestion = url.includes('/question/');
+                                if (isQuestion) {
+                                    // For question votes, directly update the UI with the current vote count
+                                    // This avoids the call to the non-existent /questions/{id}/vote-count endpoint
+                                    const questionElement = this.closest('.question, .question-summary');
+                                    if (questionElement) {
+                                        // We don't have the vote count directly, so we'll use the current displayed count
+                                        // and increment/decrement based on the vote action
+                                        const currentCount = parseInt(voteCountElement.textContent) || 0;
+                                        const isUpvote = this.classList.contains('upvote');
+                                        const wasActive = this.classList.contains('active');
+
+                                        // No need to fetch from server - update UI directly
+                                        if (!wasActive) {
+                                            // Adding a new vote
+                                            voteCountElement.textContent = isUpvote ? currentCount + 1 : currentCount - 1;
+                                        } else {
+                                            // Changing vote type would be handled by the opposite button
+                                            // No change needed here
+                                        }
+                                    }
+                                }
                             }
 
                             // Toggle active state
                             const isUpvote = this.classList.contains('upvote');
-                            const sibling = isUpvote
-                                ? this.nextElementSibling.nextElementSibling
-                                : this.previousElementSibling.previousElementSibling;
+                            const voteType = data.voteStatus;
 
-                            if (data.voteAdded) {
+                            // Reset all vote buttons in this container
+                            const voteButtons = this.closest('.voting').querySelectorAll('.vote-button');
+                            voteButtons.forEach(btn => btn.classList.remove('active'));
+
+                            // Set active state if vote was added/changed
+                            if (voteType === 'UPVOTE' && isUpvote) {
                                 this.classList.add('active');
-                                sibling.classList.remove('active');
-                            } else {
-                                this.classList.remove('active');
+                            } else if (voteType === 'DOWNVOTE' && !isUpvote) {
+                                this.classList.add('active');
                             }
                         }
                     })
-                    .catch(error => console.error('Error:', error));
+                    .catch(error => {
+                        // Only show error for actual network errors
+                        console.error('Error:', error);
+                        // Check if error is related to vote-count endpoint or actual voting error
+                        if (!error.message.includes('vote-count')) {
+                            alert('Failed to register vote. Please try again later.');
+                        }
+                    });
                 });
             });
         });
@@ -178,7 +241,7 @@
                                 <!-- Question comments -->
                                 <div class="comments mt-3 border-top pt-2" th:if="${!#lists.isEmpty(questionComments)}">
                                     <div th:each="comment : ${questionComments}" class="comment py-1">
-                                        <div class="comment-content" th:text="${comment.content}">Comment text</div>
+                                        <div class="comment-content" th:text="${comment.body}">Comment text</div>
                                         <div class="comment-meta text-muted small">
                                             – <a th:href="@{/users/{id}(id=${comment.user.id})}"
                                                th:text="${comment.user.username}">commenter</a>
@@ -192,7 +255,7 @@
                                     <form th:action="@{/comments/question/{id}(id=${question.id})}"
                                           method="post" class="comment-form">
                                         <div class="input-group">
-                                            <input type="text" name="content" class="form-control"
+                                            <input type="text" name="body" class="form-control"
                                                    placeholder="Add a comment...">
                                             <button class="btn btn-outline-secondary" type="submit">Add</button>
                                         </div>

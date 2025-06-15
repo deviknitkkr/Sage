@@ -28,7 +28,8 @@ public class VoteService {
 
         // Check if user is voting on their own question
         if (question.getUser().getId().equals(currentUser.getId())) {
-            throw new RuntimeException("You cannot vote on your own question");
+            // Return null instead of throwing an exception
+            return null;
         }
 
         // Check if user has already voted on this question
@@ -36,12 +37,11 @@ public class VoteService {
 
         if (existingVote.isPresent()) {
             Vote vote = existingVote.get();
-            // If same vote type, remove the vote (toggle)
+            // If same vote type, do nothing (can't cancel votes)
             if (vote.getVoteType() == voteType) {
-                voteRepository.delete(vote);
-                return null;
+                return vote; // Return existing vote without changes
             } else {
-                // Change vote type
+                // Change vote type (from upvote to downvote or vice versa)
                 vote.setVoteType(voteType);
                 return voteRepository.save(vote);
             }
@@ -62,7 +62,8 @@ public class VoteService {
 
         // Check if user is voting on their own answer
         if (answer.getUser().getId().equals(currentUser.getId())) {
-            throw new RuntimeException("You cannot vote on your own answer");
+            // Return null instead of throwing an exception
+            return null;
         }
 
         // Check if user has already voted on this answer
@@ -70,12 +71,11 @@ public class VoteService {
 
         if (existingVote.isPresent()) {
             Vote vote = existingVote.get();
-            // If same vote type, remove the vote (toggle)
+            // If same vote type, do nothing (can't cancel votes)
             if (vote.getVoteType() == voteType) {
-                voteRepository.delete(vote);
-                return null;
+                return vote; // Return existing vote without changes
             } else {
-                // Change vote type
+                // Change vote type (from upvote to downvote or vice versa)
                 vote.setVoteType(voteType);
                 return voteRepository.save(vote);
             }

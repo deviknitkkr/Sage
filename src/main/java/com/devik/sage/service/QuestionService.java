@@ -110,4 +110,13 @@ public class QuestionService {
         Pageable pageable = PageRequest.of(page, size);
         return questionRepository.findByTagNameContaining(tagName, pageable);
     }
+
+    @Transactional
+    public void incrementViewCount(Long questionId) {
+        Question question = questionRepository.findById(questionId)
+                .orElseThrow(() -> new RuntimeException("Question not found"));
+
+        question.incrementViewCount();
+        questionRepository.save(question);
+    }
 }

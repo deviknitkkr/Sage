@@ -6,6 +6,7 @@ import com.devik.sage.service.*;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Controller;
@@ -14,8 +15,10 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -84,6 +87,10 @@ public class QuestionController {
             @AuthenticationPrincipal UserDetails userDetails) {
 
         Question question = questionService.getQuestionById(id);
+
+        // Increment view count
+        questionService.incrementViewCount(id);
+
         List<Answer> answers = answerService.getAnswersByQuestion(id);
         List<Comment> questionComments = commentService.getCommentsByQuestion(id);
 
@@ -187,6 +194,15 @@ public class QuestionController {
         model.addAttribute("tag", tag);
 
         return "tagged-questions";
+    }
+
+    @GetMapping("/{id}/vote-count")
+    @ResponseBody
+    public ResponseEntity<Map<String, Integer>> getQuestionVoteCount(@PathVariable Long id) {
+        Question question = questionService.getQuestionById(id);
+        Map<String, Integer> response = new HashMap<>();
+        response.put("voteCount", question.getUpvoteCount() - question.getDownvoteCount());
+        return ResponseEntity.ok(response);
     }
 
     private Set<String> parseTags(String tagsString) {
