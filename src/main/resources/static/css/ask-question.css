@@ -207,14 +207,29 @@
     outline: none;
 }
 
+/* Fix for overlapping 'x' icon with tag text */
 .tag-item {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    background-color: #e1ecf4;
-    color: #39739d;
+    padding: 0.2em 0.5em;
+    margin: 0.2em;
+    background-color: #f1f1f1;
+    border: 1px solid #ccc;
     border-radius: 3px;
-    padding: 4px 8px;
-    font-size: 13px;
+    font-size: 0.9em;
+}
+
+.tag-item .tag-remove {
+    margin-left: 0.5em;
+    background: none;
+    border: none;
+    color: #888;
+    cursor: pointer;
+    font-size: 1em;
+}
+
+.tag-item .tag-remove:hover {
+    color: #555;
 }
 
 .tag-item-remove {

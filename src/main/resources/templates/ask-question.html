@@ -1,10 +1,9 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
-      xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity6">
+      xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity6"
+      th:replace="~{layout :: html(title='Ask a Question', content=~{::div}, styles=~{::head/link}, scripts=~{::head/script})}">
 <head>
     <link rel="stylesheet" th:href="@{/css/ask-question.css}">
-    <!-- Font Awesome -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     <!-- SimpleMDE Markdown Editor -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.css">
     <!-- Custom SimpleMDE styles to fix side-by-side layout -->
@@ -13,208 +12,196 @@
     <!-- Highlight.js for syntax highlighting -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
-</head>
-<body>
-    <div th:fragment="content" class="ask-question-container">
-        <div class="row">
-            <div class="col-md-9">
-                <div class="ask-question-header">
-                    <h1 class="ask-question-title">Ask a Question</h1>
-                    <p class="ask-question-subtitle">Get help from our community of developers</p>
-                </div>
-
-                <form th:action="@{/questions/ask}" th:object="${question}" method="post" id="questionForm">
-                    <div class="question-form-card">
-                        <div class="question-form-header">
-                            <h5 class="question-form-title">Title</h5>
-                        </div>
-                        <div class="question-form-body">
-                            <p class="question-form-guidance">Be specific and imagine you're asking a question to another person</p>
-                            <input type="text" th:field="*{title}" class="question-form-input"
-                                   placeholder="e.g. How to implement authentication in Spring Boot?"
-                                   required minlength="10" maxlength="200">
-                            <div class="error-text" th:if="${#fields.hasErrors('title')}" th:errors="*{title}">Title error</div>
-                        </div>
-                    </div>
-
-                    <div class="question-form-card">
-                        <div class="question-form-header">
-                            <h5 class="question-form-title">Body</h5>
-                        </div>
-                        <div class="question-form-body">
-                            <p class="question-form-guidance">Include all the information someone would need to answer your question</p>
-
-                            <div class="markdown-editor-container">
-                                <textarea th:field="*{body}" id="bodyEditor" required></textarea>
-                            </div>
-
-                            <div class="error-text" th:if="${#fields.hasErrors('body')}" th:errors="*{body}">Body error</div>
-                            <div class="form-help-text mt-2">
-                                <i class="fas fa-info-circle"></i>
-                                Supports Markdown. You can use <strong>bold</strong>, *italic*, code blocks, lists, and more.
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="question-form-card">
-                        <div class="question-form-header">
-                            <h5 class="question-form-title">Tags</h5>
-                        </div>
-                        <div class="question-form-body">
-                            <p class="question-form-guidance">Add up to 5 tags to describe what your question is about</p>
-                            <div class="tag-input-container" id="tagContainer">
-                                <input type="text" id="tagInput" class="tag-input"
-                                       placeholder="e.g. java spring-boot hibernate">
-                            </div>
-                            <input type="hidden" name="tags" id="tagsHidden" required>
-                            <div class="form-help-text">
-                                Add tags separated by space or comma (e.g., java spring-boot hibernate)
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mb-4">
-                        <button type="submit" id="submitButton" class="question-submit-button">Post Your Question</button>
-                    </div>
-                </form>
-            </div>
-
-            <!-- Sidebar with FAQ/Tips -->
-            <div class="col-md-3">
-                <div class="tips-card">
-                    <div class="tips-card-header">
-                        Writing a Good Question
-                    </div>
-                    <div class="tips-card-body">
-                        <div class="tips-title">Steps to write a great question:</div>
-                        <ul class="tips-list">
-                            <li>Summarize your problem in a one-line title</li>
-                            <li>Describe your problem in more detail</li>
-                            <li>Describe what you tried and what you expected</li>
-                            <li>Include code samples, if relevant</li>
-                            <li>Add tags that identify the languages or tools</li>
-                            <li>Review and proofread before posting</li>
-                        </ul>
-                    </div>
-                </div>
-
-                <div class="tips-card">
-                    <div class="tips-card-header">
-                        Formatting Tips
-                    </div>
-                    <div class="tips-card-body">
-                        <ul class="tips-list">
-                            <li><code>**bold**</code> for <strong>bold text</strong></li>
-                            <li><code>*italic*</code> for <em>italic text</em></li>
-                            <li><code>`code`</code> for <code>inline code</code></li>
-                            <li><code>```code block```</code> for code blocks</li>
-                            <li><code>- item</code> for bullet lists</li>
-                            <li><code>[link](url)</code> for hyperlinks</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Initialize SimpleMDE Markdown Editor
-            var simplemde = new SimpleMDE({
+            // Initialize the markdown editor
+            var bodyEditor = new SimpleMDE({
                 element: document.getElementById("bodyEditor"),
                 spellChecker: false,
-                autofocus: true,
-                placeholder: "Write your question details here...",
+                autosave: {
+                    enabled: true,
+                    unique_id: "question_editor",
+                },
+                renderingConfig: {
+                    codeSyntaxHighlighting: true,
+                },
                 toolbar: [
                     "bold", "italic", "heading", "|",
                     "code", "quote", "unordered-list", "ordered-list", "|",
-                    "link", "image", "table", "|",
+                    "link", "image", "|",
                     "preview", "side-by-side", "fullscreen", "|",
                     "guide"
                 ],
-                status: false,
-                initialValue: document.getElementById("bodyEditor").value,
-                renderingConfig: {
-                    singleLineBreaks: false,
-                    codeSyntaxHighlighting: true,
-                }
+                placeholder: "Enter question details here...\n\n## What I've tried\n\n## Expected behavior\n\n## Actual behavior"
             });
 
-            // Initialize tag input
-            const tagInput = document.getElementById('tagInput');
-            const tagContainer = document.getElementById('tagContainer');
-            const tagsHidden = document.getElementById('tagsHidden');
-            const tags = new Set();
-
-            function updateTags() {
-                tagsHidden.value = Array.from(tags).join(',');
+            // Set initial content if empty
+            if (!bodyEditor.value().trim()) {
+                bodyEditor.value("Enter your question details here...");
             }
 
-            function addTag(tag) {
-                if (!tag || tags.size >= 5) return;
+            // Immediately sync value to hidden field
+            document.getElementById('body').value = bodyEditor.value();
 
-                tag = tag.toLowerCase().trim();
-                if (tag && !tags.has(tag)) {
-                    tags.add(tag);
+            // Add input event listener to update hidden field when editor changes
+            bodyEditor.codemirror.on("change", function() {
+                document.getElementById('body').value = bodyEditor.value();
+                console.log("Updated hidden field with:", bodyEditor.value());
+            });
 
-                    const tagElement = document.createElement('div');
-                    tagElement.className = 'tag-item';
-                    tagElement.innerHTML = `
-                        ${tag}
-                        <button type="button" class="tag-item-remove">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    `;
-
-                    tagElement.querySelector('.tag-item-remove').addEventListener('click', function() {
-                        tags.delete(tag);
-                        tagElement.remove();
-                        updateTags();
-                    });
-
-                    tagContainer.insertBefore(tagElement, tagInput);
-                    updateTags();
-                }
-
-                tagInput.value = '';
-            }
-
-            tagInput.addEventListener('keydown', function(e) {
-                if ((e.key === ' ' || e.key === ',' || e.key === 'Enter') && tagInput.value.trim()) {
+            // Double-check before submission that the hidden field is updated
+            document.querySelector('form').addEventListener('submit', function(e) {
+                // Prevent empty submissions
+                if (!bodyEditor.value().trim()) {
                     e.preventDefault();
-                    addTag(tagInput.value);
-                }
-            });
-
-            // Enable side by side mode after editor loads
-            setTimeout(function() {
-                const sideButton = document.querySelector('.fa-columns');
-                if (sideButton) {
-                    sideButton.closest('button').click();
-                }
-            }, 500);
-
-            // Form submission handling - using direct HTML form submission
-            const form = document.getElementById('questionForm');
-
-            // Override the form's submit event
-            form.addEventListener('submit', function(e) {
-                // Prevent default submission first
-                e.preventDefault();
-
-                // Make sure the SimpleMDE content is saved to the textarea
-                simplemde.codemirror.save();
-
-                // Validate tags
-                if (!tagsHidden.value.trim()) {
-                    alert('Please add at least one tag');
+                    alert("Please enter details for your question");
                     return false;
                 }
 
-                // If validation passes, submit the form
-                this.submit();
+                // Force update the hidden field with editor content
+                document.getElementById('body').value = bodyEditor.value();
+                console.log("Form submitted with body:", document.getElementById('body').value);
+                return true;
             });
+
+            // Tag handling
+            const tagInput = document.getElementById('tagInput');
+            const tagContainer = document.getElementById('tagContainer');
+            const tagsHidden = document.getElementById('tagsHidden');
+            let tags = [];
+
+            // Add tag when pressing Enter, comma, or space
+            tagInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.key === ',' || e.key === ' ') {
+                    e.preventDefault();
+                    addTag(this.value.trim());
+                    this.value = '';
+                }
+            });
+
+            // Add tag when input loses focus
+            tagInput.addEventListener('blur', function() {
+                if (this.value.trim()) {
+                    addTag(this.value.trim());
+                    this.value = '';
+                }
+            });
+
+            // Function to add a tag
+            function addTag(tag) {
+                if (!tag || tags.includes(tag)) return;
+
+                // Max 5 tags
+                if (tags.length >= 5) {
+                    alert('Maximum 5 tags allowed');
+                    return;
+                }
+
+                tags.push(tag);
+                updateTags();
+            }
+
+            // Remove tag when clicked
+            tagContainer.addEventListener('click', function(e) {
+                if (e.target.classList.contains('tag-remove')) {
+                    const tagToRemove = e.target.parentElement.getAttribute('data-tag');
+                    tags = tags.filter(tag => tag !== tagToRemove);
+                    updateTags();
+                }
+            });
+
+            // Update tags display and hidden input
+            function updateTags() {
+                tagContainer.innerHTML = '';
+                tags.forEach(tag => {
+                    const tagElement = document.createElement('span');
+                    tagElement.className = 'tag';
+                    tagElement.setAttribute('data-tag', tag);
+                    tagElement.innerHTML = tag + '<span class="tag-remove">&times;</span>';
+                    tagContainer.appendChild(tagElement);
+                });
+                tagsHidden.value = tags.join(',');
+            }
+
+            // Add a default tag if none provided
+            if (tags.length === 0) {
+                addTag('java');
+            }
         });
     </script>
+</head>
+<body>
+    <div class="container py-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <h1 class="mb-4">Ask a public question</h1>
+
+                <div class="writing-tips card mb-4">
+                    <div class="card-header">
+                        Writing a good question
+                    </div>
+                    <div class="card-body">
+                        <p>You're ready to <a href="#" target="_blank">ask</a> a programming-related question and this form will help guide you through the process.</p>
+                        <p>Steps to write a good question:</p>
+                        <ul>
+                            <li>Summarize your problem in a one-line title</li>
+                            <li>Describe your problem in more detail</li>
+                            <li>Describe what you tried and what you expected to happen</li>
+                            <li>Add "tags" which help surface your question to members of the community</li>
+                            <li>Review your question and post it to the site</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <form th:action="@{/questions/ask}" th:object="${question}" method="post" class="needs-validation" novalidate>
+                    <!-- Title field -->
+                    <div class="mb-4">
+                        <div class="form-label-group">
+                            <label for="title" class="form-label">Title</label>
+                            <small class="form-text text-muted d-block mb-2">Be specific and imagine you're asking a question to another programmer</small>
+                        </div>
+                        <input type="text" class="form-control" id="title" name="title" th:field="*{title}"
+                               placeholder="e.g. How to center a div with Flexbox?" required>
+                        <div class="invalid-feedback" th:if="${#fields.hasErrors('title')}" th:errors="*{title}">
+                            Please provide a title.
+                        </div>
+                    </div>
+
+                    <!-- Body field -->
+                    <div class="mb-4">
+                        <div class="form-label-group">
+                            <label for="bodyEditor" class="form-label">Body</label>
+                            <small class="form-text text-muted d-block mb-2">Include all the information someone would need to answer your question</small>
+                        </div>
+                        <textarea id="bodyEditor" class="form-control" required></textarea>
+                        <input type="hidden" id="body" name="body" th:field="*{body}">
+                        <div class="invalid-feedback" th:if="${#fields.hasErrors('body')}" th:errors="*{body}">
+                            Please provide details for your question.
+                        </div>
+                    </div>
+
+                    <!-- Tags field -->
+                    <div class="mb-4">
+                        <div class="form-label-group">
+                            <label for="tagInput" class="form-label">Tags</label>
+                            <small class="form-text text-muted d-block mb-2">Add up to 5 tags to describe what your question is about (press Enter, comma, or space after each tag)</small>
+                        </div>
+                        <div class="tag-input-container">
+                            <div id="tagContainer" class="tag-container"></div>
+                            <input type="text" id="tagInput" class="form-control tag-input"
+                                   placeholder="e.g. javascript, react, node.js">
+                        </div>
+                        <input type="hidden" id="tagsHidden" name="tags">
+                    </div>
+
+                    <!-- Submit button -->
+                    <div class="d-grid gap-2 d-md-flex">
+                        <button type="submit" class="btn btn-primary btn-lg">Post Your Question</button>
+                        <a th:href="@{/questions}" class="btn btn-outline-secondary btn-lg">Discard</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

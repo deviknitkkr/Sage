@@ -41,6 +41,10 @@ public class TagService {
         return tagRepository.findByNameIgnoreCase(name);
     }
 
+    public void saveTag(Tag tag) {
+        tagRepository.save(tag);
+    }
+
     public boolean tagExists(String name) {
         return tagRepository.existsByNameIgnoreCase(name);
     }

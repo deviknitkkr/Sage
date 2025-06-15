@@ -29,6 +29,7 @@ public class HomeController {
         Page<Question> questions = questionService.getAllQuestions(page, size);
         List<Tag> popularTags = tagService.getPopularTags(10);
 
+        // Add questions and page information to the model
         model.addAttribute("questions", questions.getContent());
         model.addAttribute("currentPage", page);
         model.addAttribute("totalPages", questions.getTotalPages());

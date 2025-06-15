@@ -1,13 +1,8 @@
 package com.devik.sage.controller;
 
-import com.devik.sage.model.Answer;
-import com.devik.sage.model.Comment;
-import com.devik.sage.model.Question;
-import com.devik.sage.model.User;
-import com.devik.sage.service.AnswerService;
-import com.devik.sage.service.CommentService;
-import com.devik.sage.service.QuestionService;
-import com.devik.sage.service.UserService;
+import com.devik.sage.model.*;
+import com.devik.sage.repository.TagRepository;
+import com.devik.sage.service.*;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -33,6 +28,7 @@ public class QuestionController {
     private final AnswerService answerService;
     private final CommentService commentService;
     private final UserService userService;
+    private final TagService tagService;
 
     @GetMapping
     public String getAllQuestions(
@@ -47,9 +43,9 @@ public class QuestionController {
         model.addAttribute("questions", questionsPage.getContent());
         model.addAttribute("currentPage", page);
         model.addAttribute("totalPages", questionsPage.getTotalPages());
+        model.addAttribute("popularTags", tagService.getPopularTags(size));
 
-        // Add tag service for popular tags - we need to inject the service first
-        return "index";
+        return "questions"; // Change from "index" to "questions" template
     }
 
     @GetMapping("/ask")
@@ -66,18 +62,19 @@ public class QuestionController {
             @AuthenticationPrincipal UserDetails userDetails,
             Model model) {
 
-        if (result.hasErrors()) {
-            return "ask-question";
-        }
 
         User currentUser = userService.findByUsername(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        Set<String> tagSet = parseTags(tags);
+        // Parse tags and handle database operations
+        Set<String> tagSet = Arrays.stream(tags.split(","))
+                .map(String::trim)
+                .filter(tagName -> !tagName.isEmpty())
+                .collect(Collectors.toSet());
 
-        Question savedQuestion = questionService.createQuestion(question, tagSet, currentUser);
+        questionService.createQuestion(question, tagSet, currentUser);
 
-        return "redirect:/questions/" + savedQuestion.getId();
+        return "redirect:/questions/" + question.getId();
     }
 
     @GetMapping("/{id}")

@@ -1,125 +1,17 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
-      xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity6">
+      xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity6"
+      th:replace="~{layout :: html(title='Top Questions', content=~{::div}, styles=~{::head/link}, scripts=~{::head/script})}">
 <head>
     <link rel="stylesheet" th:href="@{/css/questions.css}">
+    <script>
+        // Redirect to the questions page
+        window.location.href = "/questions";
+    </script>
 </head>
 <body>
-    <div th:fragment="content" class="questions-container">
-        <div class="row">
-            <!-- Main content -->
-            <div class="col-md-9">
-                <div class="questions-header">
-                    <h2>Top Questions</h2>
-                    <a th:href="@{/questions/ask}" class="btn btn-primary" sec:authorize="isAuthenticated()">Ask Question</a>
-                </div>
-
-                <!-- Questions list -->
-                <div class="question-list">
-                    <!-- Empty state when no questions -->
-                    <div th:if="${#lists.isEmpty(questions)}" class="empty-state">
-                        <div class="empty-state-icon">
-                            <i class="fas fa-question-circle"></i>
-                        </div>
-                        <h3 class="empty-state-title">No questions yet</h3>
-                        <p class="empty-state-description">
-                            Be the first to ask a question! Share your programming challenges and help build our community.
-                        </p>
-                        <a th:href="@{/questions/ask}" class="btn btn-primary" sec:authorize="isAuthenticated()">Ask a Question</a>
-                        <a th:href="@{/login}" class="btn btn-outline-primary" sec:authorize="!isAuthenticated()">Log in to Ask</a>
-                    </div>
-
-                    <!-- Questions display -->
-                    <div th:each="question : ${questions}" class="question-summary d-flex">
-                        <!-- Stats -->
-                        <div class="question-stats">
-                            <div class="stats-item">
-                                <span class="vote-count" th:text="${question.upvoteCount - question.downvoteCount}">0</span>
-                                <div>votes</div>
-                            </div>
-                            <div class="stats-item" th:classappend="${question.answers.size() > 0 ? 'has-answers' : ''}">
-                                <span th:text="${question.answers.size()}">0</span>
-                                <div>answers</div>
-                            </div>
-                        </div>
-
-                        <!-- Question details -->
-                        <div class="question-details">
-                            <h3 class="question-title">
-                                <a th:href="@{/questions/{id}(id=${question.id})}" th:text="${question.title}">Question Title</a>
-                            </h3>
-                            <div class="question-excerpt" th:text="${#strings.abbreviate(question.body, 200)}">
-                                Question excerpt...
-                            </div>
-                            <div class="question-info">
-                                <div class="tags">
-                                    <a th:each="tag : ${question.tags}" class="tag" th:href="@{/questions/tagged/{name}(name=${tag.name})}" th:text="${tag.name}">tag</a>
-                                </div>
-                                <div class="user-info">
-                                    asked <span th:text="${#temporals.format(question.createdAt, 'MMM d, yyyy')}">Jan 1, 2023</span>
-                                    by <a th:href="@{/users/{id}(id=${question.user.id})}" th:text="${question.user.displayName}">Username</a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Pagination -->
-                    <div th:if="${totalPages > 1}" class="pagination-container">
-                        <nav>
-                            <ul class="pagination">
-                                <li class="page-item" th:classappend="${currentPage == 0 ? 'disabled' : ''}">
-                                    <a class="page-link" th:href="@{/(page=${currentPage - 1})}" aria-label="Previous">
-                                        <span aria-hidden="true">&laquo;</span>
-                                    </a>
-                                </li>
-
-                                <li th:each="i : ${#numbers.sequence(0, totalPages - 1)}"
-                                    class="page-item" th:classappend="${currentPage == i ? 'active' : ''}">
-                                    <a class="page-link" th:href="@{/(page=${i})}" th:text="${i + 1}">1</a>
-                                </li>
-
-                                <li class="page-item" th:classappend="${currentPage == totalPages - 1 ? 'disabled' : ''}">
-                                    <a class="page-link" th:href="@{/(page=${currentPage + 1})}" aria-label="Next">
-                                        <span aria-hidden="true">&raquo;</span>
-                                    </a>
-                                </li>
-                            </ul>
-                        </nav>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Sidebar -->
-            <div class="col-md-3">
-                <div class="sidebar-card">
-                    <div class="sidebar-header">
-                        Popular Tags
-                    </div>
-                    <div class="sidebar-content">
-                        <div class="popular-tags">
-                            <div th:if="${#lists.isEmpty(popularTags)}" class="text-muted small">
-                                No tags created yet
-                            </div>
-                            <a th:each="tag : ${popularTags}" class="tag"
-                               th:href="@{/questions/tagged/{name}(name=${tag.name})}" th:text="${tag.name}">tag</a>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="sidebar-card" sec:authorize="!isAuthenticated()">
-                    <div class="sidebar-header">
-                        Join the Community
-                    </div>
-                    <div class="sidebar-content">
-                        <p class="mb-3 small">Sign up to ask questions, answer, and engage with our growing community.</p>
-                        <div class="d-grid gap-2">
-                            <a th:href="@{/register}" class="btn btn-primary">Sign up</a>
-                            <a th:href="@{/login}" class="btn btn-outline-primary">Log in</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <div class="container">
+        <p>Redirecting to questions page...</p>
     </div>
 </body>
 </html>
