@@ -44,8 +44,15 @@
                             return;
                         }
 
-                        // Set the value to the hidden input or textarea
-                        document.getElementById('answerBody').value = content;
+                        // Set the value directly to the textarea
+                        const textarea = document.getElementById('answerBody');
+                        textarea.value = content;
+
+                        // Make sure the textarea is not hidden by SimpleMDE's CSS
+                        textarea.style.display = 'block';
+                        textarea.style.visibility = 'visible';
+                        textarea.style.height = '1px';
+                        textarea.style.position = 'absolute';
 
                         // Submit the form manually
                         this.submit();
@@ -99,55 +106,36 @@
                             // Get the vote count element
                             const voteCountElement = this.closest('.voting').querySelector('.vote-count');
                             if (voteCountElement) {
-                                // Calculate vote count directly from the data returned from the vote action
-                                // Instead of making another request to a non-existent endpoint
-                                const isQuestion = url.includes('/question/');
-                                if (isQuestion) {
-                                    // For question votes, directly update the UI with the current vote count
-                                    // This avoids the call to the non-existent /questions/{id}/vote-count endpoint
-                                    const questionElement = this.closest('.question, .question-summary');
-                                    if (questionElement) {
-                                        // We don't have the vote count directly, so we'll use the current displayed count
-                                        // and increment/decrement based on the vote action
-                                        const currentCount = parseInt(voteCountElement.textContent) || 0;
-                                        const isUpvote = this.classList.contains('upvote');
-                                        const wasActive = this.classList.contains('active');
+                                // Update UI based on the vote action
+                                const currentCount = parseInt(voteCountElement.textContent) || 0;
+                                const isUpvote = this.classList.contains('upvote-btn');
+                                const wasActive = this.classList.contains('voted-up') || this.classList.contains('voted-down');
 
-                                        // No need to fetch from server - update UI directly
-                                        if (!wasActive) {
-                                            // Adding a new vote
-                                            voteCountElement.textContent = isUpvote ? currentCount + 1 : currentCount - 1;
-                                        } else {
-                                            // Changing vote type would be handled by the opposite button
-                                            // No change needed here
-                                        }
-                                    }
+                                // Reset vote button classes
+                                const upvoteBtn = this.closest('.voting').querySelector('.upvote-btn');
+                                const downvoteBtn = this.closest('.voting').querySelector('.downvote-btn');
+                                upvoteBtn.classList.remove('voted-up');
+                                downvoteBtn.classList.remove('voted-down');
+
+                                // Update vote status and classes
+                                if (data.voteStatus === 'UPVOTE') {
+                                    upvoteBtn.classList.add('voted-up');
+                                } else if (data.voteStatus === 'DOWNVOTE') {
+                                    downvoteBtn.classList.add('voted-down');
                                 }
-                            }
 
-                            // Toggle active state
-                            const isUpvote = this.classList.contains('upvote');
-                            const voteType = data.voteStatus;
-
-                            // Reset all vote buttons in this container
-                            const voteButtons = this.closest('.voting').querySelectorAll('.vote-button');
-                            voteButtons.forEach(btn => btn.classList.remove('active'));
-
-                            // Set active state if vote was added/changed
-                            if (voteType === 'UPVOTE' && isUpvote) {
-                                this.classList.add('active');
-                            } else if (voteType === 'DOWNVOTE' && !isUpvote) {
-                                this.classList.add('active');
+                                // Refresh the page to get updated vote counts
+                                // This is a simplified approach; in a production app, you'd want to use a more
+                                // elegant solution like updating the count via WebSocket or separate endpoint
+                                setTimeout(() => {
+                                    location.reload();
+                                }, 300);
                             }
                         }
                     })
                     .catch(error => {
-                        // Only show error for actual network errors
                         console.error('Error:', error);
-                        // Check if error is related to vote-count endpoint or actual voting error
-                        if (!error.message.includes('vote-count')) {
-                            alert('Failed to register vote. Please try again later.');
-                        }
+                        alert('Failed to register vote. Please try again later.');
                     });
                 });
             });
@@ -157,171 +145,200 @@
 <body>
     <div class="container py-4">
         <!-- Question header -->
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1 class="fs-3" th:text="${question.title}">Question Title</h1>
-            <a th:href="@{/questions/ask}" class="btn btn-primary" sec:authorize="isAuthenticated()">Ask Question</a>
-        </div>
-
-        <div class="question-stats-row d-flex mb-3">
-            <div class="me-3">
-                <span class="text-muted">Asked</span>
-                <span th:text="${#temporals.format(question.createdAt, 'MMM d, yyyy')}">Jan 1, 2023</span>
+        <div class="question-header">
+            <div class="d-flex justify-content-between align-items-start">
+                <h1 th:text="${question.title}">Question Title</h1>
+                <a th:href="@{/questions/ask}" class="btn btn-primary" sec:authorize="isAuthenticated()">Ask Question</a>
             </div>
-            <div class="me-3">
-                <span class="text-muted">Viewed</span>
-                <span th:text="${question.viewCount}">0</span> times
+
+            <div class="post-metadata">
+                <div class="post-info">
+                    <span>Asked</span>
+                    <time th:text="${#temporals.format(question.createdAt, 'MMM d, yyyy')}">Jan 1, 2023</time>
+                    <span class="bullet">•</span>
+                    <span>Viewed</span>
+                    <span th:text="${question.viewCount}">0</span>
+                    <span>times</span>
+                </div>
             </div>
         </div>
 
         <!-- Question and answers container -->
-        <div class="row">
-            <!-- Main content -->
-            <div class="col-md-9">
-                <!-- Question -->
-                <div class="card mb-4">
-                    <div class="card-body">
-                        <div class="question d-flex">
-                            <!-- Voting controls -->
-                            <div class="voting text-center me-3">
-                                <button class="vote-button upvote btn btn-link"
-                                        th:data-url="@{/votes/question/{id}/upvote(id=${question.id})}"
-                                        title="This question shows research effort; it is useful and clear"
-                                        sec:authorize="isAuthenticated()">
-                                    <i class="fas fa-chevron-up fa-2x"></i>
+        <div class="question-container">
+            <!-- Question -->
+            <div class="post question-post">
+                <div class="d-flex">
+                    <!-- Voting controls -->
+                    <div class="voting">
+                        <button class="vote-button upvote-btn"
+                                th:data-url="@{/votes/question/{id}/upvote(id=${question.id})}"
+                                th:title="${'This question shows research effort; it is useful and clear'}"
+                                sec:authorize="isAuthenticated()">
+                            <i class="fas fa-chevron-up"></i>
+                        </button>
+
+                        <div class="vote-count" th:text="${question.upvoteCount - question.downvoteCount}">0</div>
+
+                        <button class="vote-button downvote-btn"
+                                th:data-url="@{/votes/question/{id}/downvote(id=${question.id})}"
+                                th:title="${'This question does not show research effort; it is unclear or not useful'}"
+                                sec:authorize="isAuthenticated()">
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                    </div>
+
+                    <!-- Question content -->
+                    <div class="post-content">
+                        <div class="post-body markdown-content" th:text="${question.body}">
+                            Question content will be rendered here
+                        </div>
+
+                        <!-- Tags -->
+                        <div class="post-tags">
+                            <span th:each="tag : ${question.tags}" class="badge bg-light text-dark">
+                                <a th:href="@{/questions/tagged/{name}(name=${tag.name})}" th:text="${tag.name}" class="text-decoration-none">tag</a>
+                            </span>
+                        </div>
+
+                        <!-- Post actions -->
+                        <div class="post-actions">
+                            <div class="post-actions-left">
+                                <button class="post-action-btn">
+                                    <i class="far fa-bookmark"></i> Bookmark
                                 </button>
-
-                                <div class="vote-count fs-4 my-2"
-                                     th:text="${question.upvoteCount - question.downvoteCount}">0</div>
-
-                                <button class="vote-button downvote btn btn-link"
-                                        th:data-url="@{/votes/question/{id}/downvote(id=${question.id})}"
-                                        title="This question does not show research effort; it is unclear or not useful"
-                                        sec:authorize="isAuthenticated()">
-                                    <i class="fas fa-chevron-down fa-2x"></i>
+                                <button class="post-action-btn"
+                                        th:if="${#authentication.principal != null && #authentication.principal.username == question.user.username}">
+                                    <i class="fas fa-edit"></i> Edit
                                 </button>
                             </div>
 
-                            <!-- Question content -->
-                            <div class="question-content flex-grow-1">
-                                <div class="question-body markdown-content mb-3" th:text="${question.body}">
-                                    Question content here...
-                                </div>
-
-                                <!-- Tags -->
-                                <div class="tags mb-3">
-                                    <span th:each="tag : ${question.tags}" class="badge bg-light text-dark me-1">
-                                        <a th:href="@{/questions/tagged/{name}(name=${tag.name})}"
-                                           th:text="${tag.name}" class="text-decoration-none">tag</a>
-                                    </span>
-                                </div>
-
-                                <!-- Question actions and user info -->
-                                <div class="question-meta d-flex justify-content-between align-items-center">
-                                    <div class="actions">
-                                        <a href="#" class="text-muted me-2">Share</a>
-                                        <a th:href="@{/questions/{id}/edit(id=${question.id})}"
-                                           class="text-muted me-2"
-                                           th:if="${#authorization.expression('isAuthenticated()')} and ${currentUser != null and currentUser.id == question.user.id}">
-                                            Edit
-                                        </a>
+                            <div class="post-author">
+                                <div class="user-card">
+                                    <div class="user-info">
+                                        <span>Asked</span>
+                                        <time th:text="${#temporals.format(question.createdAt, 'MMM d, yyyy')}">Jan 1, 2023</time>
                                     </div>
-
-                                    <div class="user-card">
-                                        <div class="text-muted small">
-                                            asked
-                                            <span th:text="${#temporals.format(question.createdAt, 'MMM d, yyyy')}">Jan 1, 2023</span>
-                                        </div>
-                                        <div class="user-info">
-                                            <a th:href="@{/users/{id}(id=${question.user.id})}"
-                                               th:text="${question.user.username}">username</a>
-                                        </div>
+                                    <div class="user-details">
+                                        <a th:href="@{/users/{id}(id=${question.user.id})}" class="user-link" th:text="${question.user.username}">username</a>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
 
-                                <!-- Question comments -->
-                                <div class="comments mt-3 border-top pt-2" th:if="${!#lists.isEmpty(questionComments)}">
-                                    <div th:each="comment : ${questionComments}" class="comment py-1">
-                                        <div class="comment-content" th:text="${comment.body}">Comment text</div>
-                                        <div class="comment-meta text-muted small">
-                                            – <a th:href="@{/users/{id}(id=${comment.user.id})}"
-                                               th:text="${comment.user.username}">commenter</a>
-                                            <span th:text="${#temporals.format(comment.createdAt, 'MMM d, yyyy')}">Jan 1, 2023</span>
-                                        </div>
+                        <!-- Comments section -->
+                        <div class="comments-section">
+                            <div class="comments-list">
+                                <div th:each="comment : ${question.comments}" class="comment">
+                                    <div class="comment-text" th:text="${comment.body}">Comment text</div>
+                                    <div class="comment-meta">
+                                        – <a th:href="@{/users/{id}(id=${comment.user.id})}" th:text="${comment.user.username}">username</a>
+                                        <span th:text="${#temporals.format(comment.createdAt, 'MMM d, yyyy')}">Jan 1, 2023</span>
                                     </div>
                                 </div>
+                            </div>
 
-                                <!-- Add comment form -->
-                                <div class="add-comment mt-2" sec:authorize="isAuthenticated()">
-                                    <form th:action="@{/comments/question/{id}(id=${question.id})}"
-                                          method="post" class="comment-form">
-                                        <div class="input-group">
-                                            <input type="text" name="body" class="form-control"
-                                                   placeholder="Add a comment...">
-                                            <button class="btn btn-outline-secondary" type="submit">Add</button>
-                                        </div>
-                                    </form>
-                                </div>
+                            <!-- Add comment form -->
+                            <div class="add-comment" sec:authorize="isAuthenticated()">
+                                <form th:action="@{/comments/question/{id}(id=${question.id})}" method="post">
+                                    <div class="input-group">
+                                        <input type="text" name="body" class="form-control" placeholder="Add a comment...">
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary">Add</button>
+                                    </div>
+                                </form>
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- Answer count -->
-                <div class="answer-count mb-3">
-                    <h5 th:text="${answers.size() + ' Answer' + (answers.size() != 1 ? 's' : '')}">0 Answers</h5>
+            <!-- Answers section -->
+            <div class="answers-section">
+                <div class="answers-header">
+                    <h2>
+                        <span th:text="${question.answers.size()}">0</span> Answers
+                    </h2>
                 </div>
 
-                <!-- Answers -->
-                <div class="answers mb-4">
-                    <div th:each="answer : ${answers}" class="card mb-3">
-                        <div class="card-body">
-                            <div class="answer d-flex">
-                                <!-- Voting controls -->
-                                <div class="voting text-center me-3">
-                                    <button class="vote-button upvote btn btn-link"
-                                            th:data-url="@{/votes/answer/{id}/upvote(id=${answer.id})}"
-                                            title="This answer is useful"
-                                            sec:authorize="isAuthenticated()">
-                                        <i class="fas fa-chevron-up fa-2x"></i>
-                                    </button>
+                <!-- Answers list -->
+                <div class="answers-list">
+                    <div th:each="answer : ${question.answers}" class="answer">
+                        <div class="d-flex">
+                            <!-- Voting controls -->
+                            <div class="voting">
+                                <button class="vote-button upvote-btn"
+                                        th:data-url="@{/votes/answer/{id}/upvote(id=${answer.id})}"
+                                        th:title="${'This answer is useful'}"
+                                        sec:authorize="isAuthenticated()">
+                                    <i class="fas fa-chevron-up"></i>
+                                </button>
 
-                                    <div class="vote-count fs-4 my-2" th:text="${answer.upvoteCount - answer.downvoteCount}">0</div>
+                                <div class="vote-count" th:text="${answer.upvoteCount - answer.downvoteCount}">0</div>
 
-                                    <button class="vote-button downvote btn btn-link"
-                                            th:data-url="@{/votes/answer/{id}/downvote(id=${answer.id})}"
-                                            title="This answer is not useful"
-                                            sec:authorize="isAuthenticated()">
-                                        <i class="fas fa-chevron-down fa-2x"></i>
-                                    </button>
+                                <button class="vote-button downvote-btn"
+                                        th:data-url="@{/votes/answer/{id}/downvote(id=${answer.id})}"
+                                        th:title="${'This answer is not useful'}"
+                                        sec:authorize="isAuthenticated()">
+                                    <i class="fas fa-chevron-down"></i>
+                                </button>
+
+                                <!-- Accept answer checkmark, visible only to question author -->
+                                <button th:if="${#authentication.principal != null && #authentication.principal.username == question.user.username}"
+                                        class="vote-button accept-btn"
+                                        th:classappend="${answer.accepted ? 'accepted' : ''}"
+                                        th:data-url="@{/answers/{id}/accept(id=${answer.id})}"
+                                        th:title="${'Accept this answer'}">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                            </div>
+
+                            <!-- Answer content -->
+                            <div class="post-content">
+                                <div class="post-body markdown-content" th:text="${answer.body}">
+                                    Answer content will be rendered here
                                 </div>
 
-                                <!-- Answer content -->
-                                <div class="answer-content flex-grow-1">
-                                    <div class="answer-body markdown-content mb-3" th:text="${answer.body}">
-                                        Answer content here...
+                                <!-- Post actions -->
+                                <div class="post-actions">
+                                    <div class="post-actions-left">
+                                        <button class="post-action-btn"
+                                                th:if="${#authentication.principal != null && #authentication.principal.username == answer.user.username}">
+                                            <i class="fas fa-edit"></i> Edit
+                                        </button>
                                     </div>
 
-                                    <!-- Answer actions and user info -->
-                                    <div class="answer-meta d-flex justify-content-between align-items-center">
-                                        <div class="actions">
-                                            <a href="#" class="text-muted me-2">Share</a>
-                                            <a th:href="@{/answers/{id}/edit(id=${answer.id})}"
-                                               class="text-muted me-2"
-                                               th:if="${#authorization.expression('isAuthenticated()')} and ${currentUser != null and currentUser.id == answer.user.id}">
-                                                Edit
-                                            </a>
-                                        </div>
-
+                                    <div class="post-author">
                                         <div class="user-card">
-                                            <div class="text-muted small">
-                                                answered
-                                                <span th:text="${#temporals.format(answer.createdAt, 'MMM d, yyyy')}">Jan 1, 2023</span>
-                                            </div>
                                             <div class="user-info">
-                                                <a th:href="@{/users/{id}(id=${answer.user.id})}"
-                                                   th:text="${answer.user.username}">username</a>
+                                                <span>Answered</span>
+                                                <time th:text="${#temporals.format(answer.createdAt, 'MMM d, yyyy')}">Jan 1, 2023</time>
+                                            </div>
+                                            <div class="user-details">
+                                                <a th:href="@{/users/{id}(id=${answer.user.id})}" class="user-link" th:text="${answer.user.username}">username</a>
                                             </div>
                                         </div>
+                                    </div>
+                                </div>
+
+                                <!-- Comments section -->
+                                <div class="comments-section">
+                                    <div class="comments-list">
+                                        <div th:each="comment : ${answer.comments}" class="comment">
+                                            <div class="comment-text" th:text="${comment.body}">Comment text</div>
+                                            <div class="comment-meta">
+                                                – <a th:href="@{/users/{id}(id=${comment.user.id})}" th:text="${comment.user.username}">username</a>
+                                                <span th:text="${#temporals.format(comment.createdAt, 'MMM d, yyyy')}">Jan 1, 2023</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Add comment form -->
+                                    <div class="add-comment" sec:authorize="isAuthenticated()">
+                                        <form th:action="@{/comments/answer/{id}(id=${answer.id})}" method="post">
+                                            <div class="input-group">
+                                                <input type="text" name="body" class="form-control" placeholder="Add a comment...">
+                                                <button type="submit" class="btn btn-sm btn-outline-secondary">Add</button>
+                                            </div>
+                                        </form>
                                     </div>
                                 </div>
                             </div>
@@ -330,39 +347,21 @@
                 </div>
 
                 <!-- Your Answer form -->
-                <div class="your-answer mb-4" sec:authorize="isAuthenticated()">
-                    <h5>Your Answer</h5>
+                <div class="your-answer" sec:authorize="isAuthenticated()">
+                    <h2>Your Answer</h2>
                     <form th:action="@{/answers/question/{id}(id=${question.id})}" method="post">
-                        <div class="mb-3">
+                        <div class="form-group mb-3">
                             <textarea id="answerBody" name="body" class="form-control" rows="10" required></textarea>
                         </div>
                         <button type="submit" class="btn btn-primary">Post Your Answer</button>
                     </form>
                 </div>
 
-                <!-- Login to answer CTA -->
-                <div class="login-to-answer mb-4 text-center p-4 bg-light rounded" sec:authorize="!isAuthenticated()">
-                    <p class="mb-2">You need to be logged in to answer this question.</p>
-                    <a th:href="@{/login}" class="btn btn-primary">Log in</a>
-                    <span class="mx-2">or</span>
-                    <a th:href="@{/register}" class="btn btn-outline-primary">Sign up</a>
-                </div>
-            </div>
-
-            <!-- Sidebar -->
-            <div class="col-md-3">
-                <div class="card mb-4">
-                    <div class="card-header">Related Questions</div>
-                    <div class="card-body">
-                        <p class="text-muted">No related questions yet</p>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-header">Linked Questions</div>
-                    <div class="card-body">
-                        <p class="text-muted">No linked questions yet</p>
-                    </div>
+                <!-- Not logged in message -->
+                <div class="login-prompt mt-4 p-3 bg-light rounded" sec:authorize="!isAuthenticated()">
+                    <p class="mb-2"><strong>You must be logged in to answer.</strong></p>
+                    <a th:href="@{/login}" class="btn btn-sm btn-outline-primary me-2">Log in</a>
+                    <a th:href="@{/register}" class="btn btn-sm btn-primary">Sign up</a>
                 </div>
             </div>
         </div>
