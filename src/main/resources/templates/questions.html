@@ -3,86 +3,115 @@
       xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity6"
       th:replace="~{layout :: html(title='All Questions', content=~{::div}, styles=~{::head/link}, scripts=~{::head/script})}">
 <head>
-    <link rel="stylesheet" th:href="@{/css/questions.css}">
+    <link rel="stylesheet" th:href="@{/css/questions-new.css}">
 </head>
 <body>
     <div class="container py-4">
         <div class="row">
             <!-- Main content -->
             <div class="col-md-9">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h1 class="fs-2">All Questions</h1>
-                    <a th:href="@{/questions/ask}" class="btn btn-primary" sec:authorize="isAuthenticated()">Ask Question</a>
-                </div>
-
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <div class="question-count">
-                        <span th:text="${questions.size()}">0</span> questions
-                    </div>
-                    <div class="btn-group" role="group">
-                        <button type="button" class="btn btn-outline-secondary active">Newest</button>
-                        <button type="button" class="btn btn-outline-secondary">Active</button>
-                        <button type="button" class="btn btn-outline-secondary">Votes</button>
-                    </div>
-                </div>
-
-                <!-- Questions list -->
-                <div class="question-list border-top pt-3">
-                    <!-- Empty state when no questions -->
-                    <div th:if="${#lists.isEmpty(questions)}" class="empty-state py-5 text-center">
-                        <div class="empty-state-icon mb-3">
-                            <i class="fas fa-question-circle fa-4x text-muted"></i>
+                <!-- Enhanced header with better visual hierarchy -->
+                <div class="questions-header-modern">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <div>
+                            <h1 class="questions-title">All Questions</h1>
+                            <div class="question-count-modern">
+                                <span th:text="${questions.size()}">0</span> questions
+                            </div>
                         </div>
-                        <h3 class="empty-state-title">No questions yet</h3>
-                        <p class="empty-state-description mb-4">
+                        <a th:href="@{/questions/ask}" class="btn btn-primary btn-modern" sec:authorize="isAuthenticated()">
+                            <i class="fas fa-plus"></i> Ask Question
+                        </a>
+                    </div>
+
+                    <!-- Enhanced filter buttons -->
+                    <div class="filter-section">
+                        <div class="btn-group-modern" role="group">
+                            <button type="button" class="btn btn-filter active">
+                                <i class="fas fa-clock"></i> Newest
+                            </button>
+                            <button type="button" class="btn btn-filter">
+                                <i class="fas fa-fire"></i> Active
+                            </button>
+                            <button type="button" class="btn btn-filter">
+                                <i class="fas fa-arrow-up"></i> Votes
+                            </button>
+                            <button type="button" class="btn btn-filter">
+                                <i class="fas fa-question-circle"></i> Unanswered
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Enhanced Questions list -->
+                <div class="questions-list-modern">
+                    <!-- Empty state when no questions -->
+                    <div th:if="${#lists.isEmpty(questions)}" class="empty-state-modern">
+                        <div class="empty-state-icon-modern">
+                            <i class="fas fa-question-circle"></i>
+                        </div>
+                        <h3 class="empty-state-title-modern">No questions yet</h3>
+                        <p class="empty-state-description-modern">
                             Be the first to ask a question! Share your programming challenges and help build our community.
                         </p>
-                        <a th:href="@{/questions/ask}" class="btn btn-primary" sec:authorize="isAuthenticated()">Ask a Question</a>
-                        <a th:href="@{/login}" class="btn btn-outline-primary" sec:authorize="!isAuthenticated()">Log in to Ask</a>
+                        <div class="empty-state-actions">
+                            <a th:href="@{/questions/ask}" class="btn btn-primary btn-lg" sec:authorize="isAuthenticated()">
+                                <i class="fas fa-plus"></i> Ask a Question
+                            </a>
+                            <a th:href="@{/login}" class="btn btn-outline-primary btn-lg" sec:authorize="!isAuthenticated()">
+                                <i class="fas fa-sign-in-alt"></i> Log in to Ask
+                            </a>
+                        </div>
                     </div>
 
-                    <!-- Questions display -->
-                    <div th:each="question : ${questions}" class="question-summary d-flex border-bottom py-3">
-                        <!-- Stats -->
-                        <div class="stats me-3 text-center">
-                            <div class="votes mb-2">
+                    <!-- Enhanced Questions display -->
+                    <div th:each="question : ${questions}" class="question-card-modern">
+                        <!-- Enhanced Stats -->
+                        <div class="stats-modern">
+                            <div class="stat-item votes-stat" th:classappend="${question.upvoteCount - question.downvoteCount > 0 ? 'positive' : (question.upvoteCount - question.downvoteCount < 0 ? 'negative' : '')}">
                                 <div class="count" th:text="${question.upvoteCount - question.downvoteCount}">0</div>
-                                <div class="label text-muted small">votes</div>
+                                <div class="label">votes</div>
                             </div>
-                            <div class="answers" th:classappend="${answerCountMap[question.id] > 0 ? 'answered' : ''}">
+                            <div class="stat-item answers-stat" th:classappend="${answerCountMap[question.id] > 0 ? 'answered' : ''}">
                                 <div class="count" th:text="${answerCountMap[question.id]}">0</div>
-                                <div class="label text-muted small">answers</div>
+                                <div class="label">answers</div>
                             </div>
-                            <div class="views mt-2">
+                            <div class="stat-item views-stat">
                                 <div class="count" th:text="${question.viewCount}">0</div>
-                                <div class="label text-muted small">views</div>
+                                <div class="label">views</div>
                             </div>
                         </div>
 
-                        <!-- Question content -->
-                        <div class="question-content flex-grow-1">
-                            <h3 class="question-title fs-5 mb-2">
+                        <!-- Enhanced Question content -->
+                        <div class="question-content-modern">
+                            <h3 class="question-title-modern">
                                 <a th:href="@{/questions/{id}(id=${question.id})}" th:text="${question.title}">Question Title</a>
                             </h3>
 
-                            <div class="question-excerpt text-muted mb-2" th:text="${#strings.abbreviate(question.body, 200)}">
+                            <div class="question-excerpt-modern" th:text="${#strings.abbreviate(question.body, 200)}">
                                 Question excerpt...
                             </div>
 
-                            <div class="question-meta d-flex justify-content-between align-items-center">
-                                <!-- Tags -->
-                                <div class="tags">
-                                    <span th:each="tag : ${question.tags}" class="badge bg-light text-dark me-1">
-                                        <a th:href="@{/questions/tagged/{name}(name=${tag.name})}" th:text="${tag.name}" class="text-decoration-none">tag</a>
+                            <div class="question-meta-modern">
+                                <!-- Enhanced Tags -->
+                                <div class="tags-modern">
+                                    <span th:each="tag : ${question.tags}" class="tag-modern">
+                                        <a th:href="@{/questions/tagged/{name}(name=${tag.name})}" th:text="${tag.name}">tag</a>
                                     </span>
                                 </div>
 
-                                <!-- User info -->
-                                <div class="user-info text-end">
-                                    <small class="text-muted">asked
-                                        <span th:text="${#temporals.format(question.createdAt, 'MMM d, yyyy')}">Apr 1, 2023</span> by
-                                        <a th:href="@{/users/{id}(id=${question.user.id})}" th:text="${question.user.username}">username</a>
-                                    </small>
+                                <!-- Enhanced User info -->
+                                <div class="user-info-modern">
+                                    <div class="user-avatar">
+                                        <i class="fas fa-user-circle"></i>
+                                    </div>
+                                    <div class="user-details">
+                                        <span class="user-action">asked</span>
+                                        <time th:text="${#temporals.format(question.createdAt, 'MMM d, yyyy')}">Apr 1, 2023</time>
+                                        <span class="user-name">by 
+                                            <a th:href="@{/users/{id}(id=${question.user.id})}" th:text="${question.user.username}">username</a>
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         </div>

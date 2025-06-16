@@ -149,22 +149,25 @@
 </head>
 <body>
     <div class="container py-4">
-        <!-- Question header -->
+        <!-- Question header with gradient background -->
         <div class="question-header">
             <div class="d-flex justify-content-between align-items-start">
-                <h1 th:text="${question.title}">Question Title</h1>
-                <a th:href="@{/questions/ask}" class="btn btn-primary" sec:authorize="isAuthenticated()">Ask Question</a>
-            </div>
-
-            <div class="post-metadata">
-                <div class="post-info">
-                    <span>Asked</span>
-                    <time th:text="${#temporals.format(question.createdAt, 'MMM d, yyyy')}">Jan 1, 2023</time>
-                    <span class="bullet">•</span>
-                    <span>Viewed</span>
-                    <span th:text="${question.viewCount}">0</span>
-                    <span>times</span>
+                <div>
+                    <h1 th:text="${question.title}">Question Title</h1>
+                    <div class="post-metadata">
+                        <div class="post-info">
+                            <span>📅 Asked</span>
+                            <time th:text="${#temporals.format(question.createdAt, 'MMM d, yyyy')}">Jan 1, 2023</time>
+                            <span class="bullet">•</span>
+                            <span>👁️ Viewed</span>
+                            <span th:text="${question.viewCount}">0</span>
+                            <span>times</span>
+                        </div>
+                    </div>
                 </div>
+                <a th:href="@{/questions/ask}" class="btn btn-primary" sec:authorize="isAuthenticated()">
+                    <i class="fas fa-plus"></i> Ask Question
+                </a>
             </div>
         </div>
 
@@ -173,7 +176,7 @@
             <!-- Question -->
             <div class="post question-post">
                 <div class="d-flex">
-                    <!-- Voting controls -->
+                    <!-- Enhanced Voting controls -->
                     <div class="voting">
                         <button class="vote-button upvote-btn"
                                 th:data-url="@{/votes/question/{id}/upvote(id=${question.id})}"
@@ -190,6 +193,10 @@
                                 sec:authorize="isAuthenticated()">
                             <i class="fas fa-chevron-down"></i>
                         </button>
+                        
+                        <button class="vote-button bookmark-btn" title="Bookmark this question">
+                            <i class="far fa-bookmark"></i>
+                        </button>
                     </div>
 
                     <!-- Question content -->
@@ -205,11 +212,14 @@
                             </span>
                         </div>
 
-                        <!-- Post actions -->
+                        <!-- Enhanced Post actions -->
                         <div class="post-actions">
                             <div class="post-actions-left">
                                 <button class="post-action-btn">
-                                    <i class="far fa-bookmark"></i> Bookmark
+                                    <i class="fas fa-share"></i> Share
+                                </button>
+                                <button class="post-action-btn">
+                                    <i class="fas fa-flag"></i> Flag
                                 </button>
                                 <button class="post-action-btn"
                                         th:if="${#authentication.principal != null && #authentication.principal.username == question.user.username}">
@@ -220,7 +230,7 @@
                             <div class="post-author">
                                 <div class="user-card">
                                     <div class="user-info">
-                                        <span>Asked</span>
+                                        <span>🕒 Asked</span>
                                         <time th:text="${#temporals.format(question.createdAt, 'MMM d, yyyy')}">Jan 1, 2023</time>
                                     </div>
                                     <div class="user-details">
@@ -313,11 +323,10 @@
                                     </div>
 
                                     <div class="post-author">
-                                        <div class="user-card">
-                                            <div class="user-info">
-                                                <span>Answered</span>
-                                                <time th:text="${#temporals.format(answer.createdAt, 'MMM d, yyyy')}">Jan 1, 2023</time>
-                                            </div>
+                                        <div class="user-card">                                    <div class="user-info">
+                                        <span>📝 Answered</span>
+                                        <time th:text="${#temporals.format(answer.createdAt, 'MMM d, yyyy')}">Jan 1, 2023</time>
+                                    </div>
                                             <div class="user-details">
                                                 <a th:href="@{/users/{id}(id=${answer.user.id})}" class="user-link" th:text="${answer.user.username}">username</a>
                                             </div>
