@@ -4,88 +4,91 @@ import com.devik.sage.model.Answer;
 import com.devik.sage.model.Question;
 import com.devik.sage.model.User;
 import com.devik.sage.repository.AnswerRepository;
-import com.devik.sage.repository.QuestionRepository;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class AnswerService {
 
     private final AnswerRepository answerRepository;
-    private final QuestionRepository questionRepository;
+    private final QuestionService questionService;
 
-    public List<Answer> getAnswersByQuestion(Long questionId) {
-        return answerRepository.findByQuestionIdOrderByAcceptedDescUpvoteCountDescCreatedAtDesc(questionId);
+    public Page<Answer> getAnswersByQuestionId(Long questionId, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        return answerRepository.findByQuestionId(questionId, pageable);
     }
 
-    public Answer getAnswerById(Long answerId) {
-        return answerRepository.findById(answerId)
-                .orElseThrow(() -> new RuntimeException("Answer not found with ID: " + answerId));
+    public Answer getAnswerById(Long id) {
+        return answerRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Answer not found"));
     }
 
-    // Method to get only the answer count for a question, avoiding lazy loading issues
-    public int getAnswerCountByQuestionId(Long questionId) {
-        return answerRepository.countByQuestionId(questionId);
-    }
-
-    @Transactional
-    public Answer createAnswer(Long questionId, String body, User currentUser) {
-        Question question = questionRepository.findById(questionId)
-                .orElseThrow(() -> new RuntimeException("Question not found"));
+    public Answer createAnswer(String content, Long questionId, User user) {
+        Question question = questionService.getQuestionById(questionId);
 
         Answer answer = new Answer();
-        answer.setBody(body);
+        answer.setBody(content);
         answer.setQuestion(question);
-        answer.setUser(currentUser);
+        answer.setUser(user);
+        answer.setCreatedAt(LocalDateTime.now());
+        answer.setUpdatedAt(LocalDateTime.now());
+        answer.setAccepted(false);
 
         return answerRepository.save(answer);
     }
 
-    @Transactional
-    public Answer updateAnswer(Long answerId, String body, User currentUser) {
-        Answer answer = answerRepository.findById(answerId)
-                .orElseThrow(() -> new RuntimeException("Answer not found"));
+    public Answer updateAnswer(Long id, String content, User user) {
+        Answer existing = getAnswerById(id);
 
-        if (!answer.getUser().getId().equals(currentUser.getId())) {
-            throw new RuntimeException("You don't have permission to edit this answer");
+        if (!existing.getUser().getId().equals(user.getId())) {
+            throw new RuntimeException("You can only edit your own answers");
         }
 
-        answer.setBody(body);
-        return answerRepository.save(answer);
+        existing.setBody(content);
+        existing.setUpdatedAt(LocalDateTime.now());
+
+        return answerRepository.save(existing);
     }
 
-    @Transactional
-    public void deleteAnswer(Long answerId, User currentUser) {
-        Answer answer = answerRepository.findById(answerId)
-                .orElseThrow(() -> new RuntimeException("Answer not found"));
+    public void deleteAnswer(Long id, User user) {
+        Answer existing = getAnswerById(id);
 
-        if (!answer.getUser().getId().equals(currentUser.getId())) {
-            throw new RuntimeException("You don't have permission to delete this answer");
+        if (!existing.getUser().getId().equals(user.getId())) {
+            throw new RuntimeException("You can only delete your own answers");
         }
 
-        answerRepository.delete(answer);
+        answerRepository.delete(existing);
     }
 
-    @Transactional
-    public Answer acceptAnswer(Long answerId, User currentUser) {
-        Answer answer = answerRepository.findById(answerId)
-                .orElseThrow(() -> new RuntimeException("Answer not found"));
-
+    public Answer acceptAnswer(Long id, User user) {
+        Answer answer = getAnswerById(id);
         Question question = answer.getQuestion();
 
-        if (!question.getUser().getId().equals(currentUser.getId())) {
-            throw new RuntimeException("Only the question owner can accept an answer");
+        // Only question author can accept answers
+        if (!question.getUser().getId().equals(user.getId())) {
+            throw new RuntimeException("Only the question author can accept answers");
         }
 
-        // Reset all answers to not accepted first
-        answerRepository.findByQuestionOrderByCreatedAtDesc(question).forEach(a -> a.setAccepted(false));
+        // Unaccept any previously accepted answer for this question
+        answerRepository.findByQuestionIdAndAcceptedTrue(question.getId())
+                .ifPresent(acceptedAnswer -> {
+                    acceptedAnswer.setAccepted(false);
+                    answerRepository.save(acceptedAnswer);
+                });
 
-        // Set this answer as accepted
+        // Accept this answer
         answer.setAccepted(true);
+        answer.setUpdatedAt(LocalDateTime.now());
+
         return answerRepository.save(answer);
     }
 }

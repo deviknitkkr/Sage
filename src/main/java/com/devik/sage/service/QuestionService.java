@@ -5,117 +5,97 @@ import com.devik.sage.model.Tag;
 import com.devik.sage.model.User;
 import com.devik.sage.repository.QuestionRepository;
 import com.devik.sage.repository.TagRepository;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Optional;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class QuestionService {
 
     private final QuestionRepository questionRepository;
     private final TagRepository tagRepository;
 
     public Page<Question> getAllQuestions(int page, int size) {
-        try {
-            Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-            return questionRepository.findAll(pageable);
-        } catch (Exception e) {
-            // Return empty page if there's an error or no questions
-            return new PageImpl<>(new ArrayList<>(), PageRequest.of(page, size), 0);
-        }
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        return questionRepository.findAll(pageable);
     }
 
     public Question getQuestionById(Long id) {
         return questionRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Question not found with ID: " + id));
+                .orElseThrow(() -> new RuntimeException("Question not found"));
     }
 
-    @Transactional
-    public Question createQuestion(Question question, Set<String> tagNames, User currentUser) {
-        question.setUser(currentUser);
+    public Question createQuestion(Question question, Set<String> tagNames, User user) {
+        question.setUser(user);
+        question.setCreatedAt(LocalDateTime.now());
+        question.setUpdatedAt(LocalDateTime.now());
 
-        // Process tags
-        Set<Tag> tags = processTags(tagNames);
+        // Handle tags
+        Set<Tag> tags = new HashSet<>();
+        for (String tagName : tagNames) {
+            Tag tag = tagRepository.findByName(tagName)
+                    .orElseGet(() -> {
+                        Tag newTag = new Tag();
+                        newTag.setName(tagName);
+                        return tagRepository.save(newTag);
+                    });
+            tags.add(tag);
+        }
         question.setTags(tags);
 
         return questionRepository.save(question);
-    }
-
-    @Transactional
-    public Question updateQuestion(Long questionId, Question updatedQuestion, Set<String> tagNames, User currentUser) {
-        Question question = questionRepository.findById(questionId)
-                .orElseThrow(() -> new RuntimeException("Question not found"));
-
-        if (!question.getUser().getId().equals(currentUser.getId())) {
-            throw new RuntimeException("You don't have permission to edit this question");
-        }
-
-        question.setTitle(updatedQuestion.getTitle());
-        question.setBody(updatedQuestion.getBody());
-
-        // Process tags
-        Set<Tag> tags = processTags(tagNames);
-        question.setTags(tags);
-
-        return questionRepository.save(question);
-    }
-
-    @Transactional
-    public void deleteQuestion(Long questionId, User currentUser) {
-        Question question = questionRepository.findById(questionId)
-                .orElseThrow(() -> new RuntimeException("Question not found"));
-
-        if (!question.getUser().getId().equals(currentUser.getId())) {
-            throw new RuntimeException("You don't have permission to delete this question");
-        }
-
-        questionRepository.delete(question);
-    }
-
-    private Set<Tag> processTags(Set<String> tagNames) {
-        if (tagNames == null || tagNames.isEmpty()) {
-            return new HashSet<>();
-        }
-
-        return tagNames.stream()
-                .map(name -> name.toLowerCase().trim())
-                .filter(name -> !name.isEmpty())
-                .map(name -> {
-                    // Find or create tag
-                    return tagRepository.findByNameIgnoreCase(name)
-                            .orElseGet(() -> {
-                                Tag newTag = new Tag();
-                                newTag.setName(name);
-                                return tagRepository.save(newTag);
-                            });
-                })
-                .collect(Collectors.toSet());
     }
 
     public Page<Question> searchQuestions(String query, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        return questionRepository.searchQuestions(query, pageable);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        return questionRepository.findByTitleContainingIgnoreCaseOrBodyContainingIgnoreCase(
+                query, query, pageable);
     }
 
     public Page<Question> getQuestionsByTag(String tagName, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        return questionRepository.findByTagNameContaining(tagName, pageable);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        return questionRepository.findByTagsName(tagName, pageable);
     }
 
-    @Transactional
+    public Long getAnswerCountByQuestionId(Long questionId) {
+        return questionRepository.countAnswersByQuestionId(questionId);
+    }
+
+    public Question updateQuestion(Long id, Question updatedQuestion, User user) {
+        Question existing = getQuestionById(id);
+        if (!existing.getUser().getId().equals(user.getId())) {
+            throw new RuntimeException("You can only edit your own questions");
+        }
+
+        existing.setTitle(updatedQuestion.getTitle());
+        existing.setBody(updatedQuestion.getBody());
+        existing.setUpdatedAt(LocalDateTime.now());
+
+        return questionRepository.save(existing);
+    }
+
+    public void deleteQuestion(Long id, User user) {
+        Question existing = getQuestionById(id);
+        if (!existing.getUser().getId().equals(user.getId())) {
+            throw new RuntimeException("You can only delete your own questions");
+        }
+        questionRepository.delete(existing);
+    }
+
     public void incrementViewCount(Long questionId) {
         Question question = questionRepository.findById(questionId)
                 .orElseThrow(() -> new RuntimeException("Question not found"));
-
         question.incrementViewCount();
         questionRepository.save(question);
     }

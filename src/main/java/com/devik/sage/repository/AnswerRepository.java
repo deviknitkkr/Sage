@@ -9,12 +9,18 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface AnswerRepository extends JpaRepository<Answer, Long> {
     List<Answer> findByQuestionOrderByCreatedAtDesc(Question question);
     Page<Answer> findByQuestionOrderByCreatedAtDesc(Question question, Pageable pageable);
     Page<Answer> findByUserOrderByCreatedAtDesc(User user, Pageable pageable);
+
+    // New methods needed by AnswerService
+    Page<Answer> findByQuestionId(Long questionId, Pageable pageable);
+    Optional<Answer> findByQuestionIdAndAcceptedTrue(Long questionId);
+
     int countByQuestionId(Long questionId);
     List<Answer> findByQuestionIdOrderByAcceptedDescUpvoteCountDescCreatedAtDesc(Long questionId);
 }

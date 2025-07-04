@@ -2,23 +2,34 @@ package com.devik.sage.service;
 
 import com.devik.sage.model.User;
 import com.devik.sage.repository.UserRepository;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
-public class UserService {
+public class UserService implements UserDetailsService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public User getCurrentUser(String username) {
-        return userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+    public User registerUser(User user) {
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        return userRepository.save(user);
+    }
+
+    public Optional<User> findByUsername(String username) {
+        return userRepository.findByUsername(username);
+    }
+
+    public Optional<User> findByEmail(String email) {
+        return userRepository.findByEmail(email);
     }
 
     public boolean isUsernameExists(String username) {
@@ -29,35 +40,15 @@ public class UserService {
         return userRepository.existsByEmail(email);
     }
 
-    @Transactional
-    public User registerUser(User user) {
-        if (isUsernameExists(user.getUsername())) {
-            throw new RuntimeException("Username already exists");
-        }
-        if (isEmailExists(user.getEmail())) {
-            throw new RuntimeException("Email already exists");
-        }
+    @Override
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        User user = findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
 
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
-        return userRepository.save(user);
-    }
-
-    public Optional<User> findByUsername(String username) {
-        return userRepository.findByUsername(username);
-    }
-
-    public Optional<User> findById(Long id) {
-        return userRepository.findById(id);
-    }
-
-    @Transactional
-    public User updateProfile(User currentUser, User updatedUser) {
-        currentUser.setDisplayName(updatedUser.getDisplayName());
-
-        if (updatedUser.getProfileImageUrl() != null && !updatedUser.getProfileImageUrl().isEmpty()) {
-            currentUser.setProfileImageUrl(updatedUser.getProfileImageUrl());
-        }
-
-        return userRepository.save(currentUser);
+        return org.springframework.security.core.userdetails.User.builder()
+                .username(user.getUsername())
+                .password(user.getPassword())
+                .authorities(new ArrayList<>()) // No roles for now, just basic auth
+                .build();
     }
 }

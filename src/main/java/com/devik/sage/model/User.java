@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -17,6 +18,7 @@ import java.util.Set;
 
 @Getter
 @Setter
+@Builder
 @ToString(exclude = {"questions", "answers", "comments", "votes"})
 @NoArgsConstructor
 @AllArgsConstructor
@@ -47,19 +49,40 @@ public class User {
 
     private String displayName;
 
-    private String profileImageUrl;
+    @Column(name = "bio", columnDefinition = "TEXT")
+    private String bio;
 
+    @Column(name = "location")
+    private String location;
+
+    @Column(name = "website")
+    private String website;
+
+    @Column(name = "reputation", nullable = false)
+    private Integer reputation = 0;
+
+    @Column(name = "views_count", nullable = false)
+    private Integer viewsCount = 0;
+
+    @Builder.Default
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Set<Question> questions = new HashSet<>();
 
+    @Builder.Default
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Set<Answer> answers = new HashSet<>();
 
+    @Builder.Default
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Set<Comment> comments = new HashSet<>();
 
+    @Builder.Default
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Set<Vote> votes = new HashSet<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private Set<UserBadge> userBadges = new HashSet<>();
 
     @PrePersist
     protected void onCreate() {

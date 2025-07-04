@@ -1,99 +1,147 @@
 package com.devik.sage.controller;
 
+import com.devik.sage.dto.AnswerRequest;
+import com.devik.sage.dto.AnswerResponse;
+import com.devik.sage.dto.PageResponse;
 import com.devik.sage.model.Answer;
 import com.devik.sage.model.User;
 import com.devik.sage.service.AnswerService;
 import com.devik.sage.service.UserService;
-import jakarta.validation.Valid;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
-@Controller
-@RequestMapping("/answers")
+import java.util.stream.Collectors;
+
+@RestController
+@RequestMapping("/api/questions/{questionId}/answers")
 @RequiredArgsConstructor
+@CrossOrigin(origins = "http://localhost:3000")
 public class AnswerController {
 
     private final AnswerService answerService;
     private final UserService userService;
 
-    @PostMapping("/question/{questionId}")
-    public String addAnswer(
+    @GetMapping
+    public ResponseEntity<PageResponse<AnswerResponse>> getAnswers(
             @PathVariable Long questionId,
-            @Valid @RequestParam String body,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        User currentUser = userService.findByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        Page<Answer> answerPage = answerService.getAnswersByQuestionId(questionId, page, size);
 
-        answerService.createAnswer(questionId, body, currentUser);
+        PageResponse<AnswerResponse> response = new PageResponse<>();
+        response.setContent(answerPage.getContent().stream()
+                .map(answer -> convertToResponse(answer, userDetails))
+                .collect(Collectors.toList()));
+        response.setPage(answerPage.getNumber());
+        response.setSize(answerPage.getSize());
+        response.setTotalElements(answerPage.getTotalElements());
+        response.setTotalPages(answerPage.getTotalPages());
+        response.setFirst(answerPage.isFirst());
+        response.setLast(answerPage.isLast());
+        response.setEmpty(answerPage.isEmpty());
 
-        return "redirect:/questions/" + questionId;
+        return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/{id}/edit")
-    public String editAnswerForm(
-            @PathVariable Long id,
-            Model model,
+    @PostMapping
+    public ResponseEntity<AnswerResponse> createAnswer(
+            @PathVariable Long questionId,
+            @RequestBody AnswerRequest answerRequest,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        User currentUser = userService.findByUsername(userDetails.getUsername())
+        User user = userService.findByUsername(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("User not found"));
+        Answer answer = answerService.createAnswer(answerRequest.getContent(), questionId, user);
 
-        Answer answer = answerService.getAnswerById(id);
-
-        if (!answer.getUser().getId().equals(currentUser.getId())) {
-            return "redirect:/questions/" + answer.getQuestion().getId() + "?error=unauthorized";
-        }
-
-        model.addAttribute("answer", answer);
-
-        return "edit-answer";
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(convertToResponse(answer, userDetails));
     }
 
-    @PostMapping("/{id}/edit")
-    public String updateAnswer(
-            @PathVariable Long id,
-            @Valid @RequestParam String body,
+    @PutMapping("/{answerId}")
+    public ResponseEntity<AnswerResponse> updateAnswer(
+            @PathVariable Long questionId,
+            @PathVariable Long answerId,
+            @RequestBody AnswerRequest answerRequest,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        User currentUser = userService.findByUsername(userDetails.getUsername())
+        User user = userService.findByUsername(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("User not found"));
+        Answer answer = answerService.updateAnswer(answerId, answerRequest.getContent(), user);
 
-        Answer updatedAnswer = answerService.updateAnswer(id, body, currentUser);
-
-        return "redirect:/questions/" + updatedAnswer.getQuestion().getId();
+        return ResponseEntity.ok(convertToResponse(answer, userDetails));
     }
 
-    @PostMapping("/{id}/delete")
-    public String deleteAnswer(
-            @PathVariable Long id,
+    @DeleteMapping("/{answerId}")
+    public ResponseEntity<Void> deleteAnswer(
+            @PathVariable Long questionId,
+            @PathVariable Long answerId,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        User currentUser = userService.findByUsername(userDetails.getUsername())
+        User user = userService.findByUsername(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("User not found"));
+        answerService.deleteAnswer(answerId, user);
 
-        Answer answer = answerService.getAnswerById(id);
-        Long questionId = answer.getQuestion().getId();
-
-        answerService.deleteAnswer(id, currentUser);
-
-        return "redirect:/questions/" + questionId;
+        return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/{id}/accept")
-    public String acceptAnswer(
-            @PathVariable Long id,
+    @PostMapping("/{answerId}/accept")
+    public ResponseEntity<AnswerResponse> acceptAnswer(
+            @PathVariable Long questionId,
+            @PathVariable Long answerId,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        User currentUser = userService.findByUsername(userDetails.getUsername())
+        User user = userService.findByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        Answer answer = answerService.acceptAnswer(answerId, user);
+
+        return ResponseEntity.ok(convertToResponse(answer, userDetails));
+    }
+
+    @PostMapping("/{answerId}/votes")
+    public ResponseEntity<AnswerResponse> voteOnAnswer(
+            @PathVariable Long questionId,
+            @PathVariable Long answerId,
+            @RequestBody VoteRequest voteRequest,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        User user = userService.findByUsername(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        Answer answer = answerService.acceptAnswer(id, currentUser);
+        // For now, just return the answer without voting functionality
+        // TODO: Implement voting in AnswerService
+        Answer answer = answerService.getAnswerById(answerId);
 
-        return "redirect:/questions/" + answer.getQuestion().getId();
+        return ResponseEntity.ok(convertToResponse(answer, userDetails));
+    }
+
+    private AnswerResponse convertToResponse(Answer answer, UserDetails userDetails) {
+        AnswerResponse response = new AnswerResponse();
+        response.setId(answer.getId());
+        response.setContent(answer.getBody());
+        response.setAuthorUsername(answer.getUser().getUsername());
+        response.setAuthorId(answer.getUser().getId());
+        response.setQuestionId(answer.getQuestion().getId());
+        response.setCreatedAt(answer.getCreatedAt());
+        response.setUpdatedAt(answer.getUpdatedAt());
+        response.setAccepted(answer.isAccepted());
+        response.setUpvoteCount(answer.getUpvoteCount());
+        response.setDownvoteCount(answer.getDownvoteCount());
+        response.setTotalVotes(answer.getUpvoteCount() - answer.getDownvoteCount());
+        response.setAuthor(userDetails != null && userDetails.getUsername().equals(answer.getUser().getUsername()));
+
+        return response;
+    }
+
+    @Data
+    public static class VoteRequest {
+        private String vote;
     }
 }

@@ -1,53 +1,88 @@
 package com.devik.sage.controller;
 
+import com.devik.sage.dto.LoginRequest;
+import com.devik.sage.dto.RegisterRequest;
 import com.devik.sage.model.User;
+import com.devik.sage.security.JwtUtil;
 import com.devik.sage.service.UserService;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
-import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.web.bind.annotation.*;
 
-@Controller
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/auth")
 @RequiredArgsConstructor
+@CrossOrigin(origins = "http://localhost:3000")
 public class AuthController {
 
+    private final AuthenticationManager authenticationManager;
+    private final UserDetailsService userDetailsService;
+    private final JwtUtil jwtUtil;
     private final UserService userService;
 
-    @GetMapping("/login")
-    public String loginPage() {
-        return "login";
-    }
+    @PostMapping("/login")
+    public ResponseEntity<Map<String, String>> login(@RequestBody LoginRequest request) {
+        try {
+            authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
+            );
 
-    @GetMapping("/register")
-    public String registerPage(Model model) {
-        model.addAttribute("user", new User());
-        return "register";
+            UserDetails userDetails = userDetailsService.loadUserByUsername(request.getUsername());
+            String jwt = jwtUtil.generateToken(userDetails);
+
+            Map<String, String> response = new HashMap<>();
+            response.put("token", jwt);
+            response.put("username", userDetails.getUsername());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, String> response = new HashMap<>();
+            response.put("error", "Invalid credentials");
+            return ResponseEntity.badRequest().body(response);
+        }
     }
 
     @PostMapping("/register")
-    public String registerUser(@Valid @ModelAttribute("user") User user,
-                               BindingResult result, Model model) {
-        if (result.hasErrors()) {
-            return "register";
-        }
+    public ResponseEntity<Map<String, String>> register(@RequestBody RegisterRequest request) {
+        try {
+            if (userService.isUsernameExists(request.getUsername())) {
+                Map<String, String> response = new HashMap<>();
+                response.put("error", "Username already exists");
+                return ResponseEntity.badRequest().body(response);
+            }
 
-        // Check if username exists
-        if (userService.isUsernameExists(user.getUsername())) {
-            model.addAttribute("usernameError", "Username already exists");
-            return "register";
-        }
+            if (userService.isEmailExists(request.getEmail())) {
+                Map<String, String> response = new HashMap<>();
+                response.put("error", "Email already exists");
+                return ResponseEntity.badRequest().body(response);
+            }
 
-        // Check if email exists
-        if (userService.isEmailExists(user.getEmail())) {
-            model.addAttribute("emailError", "Email already exists");
-            return "register";
-        }
+            User user = new User();
+            user.setUsername(request.getUsername());
+            user.setEmail(request.getEmail());
+            user.setPassword(request.getPassword());
+            user.setCreatedAt(LocalDateTime.now());
 
-        userService.registerUser(user);
-        return "redirect:/login?registered";
+            userService.registerUser(user);
+
+            UserDetails userDetails = userDetailsService.loadUserByUsername(request.getUsername());
+            String jwt = jwtUtil.generateToken(userDetails);
+
+            Map<String, String> response = new HashMap<>();
+            response.put("token", jwt);
+            response.put("username", userDetails.getUsername());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, String> response = new HashMap<>();
+            response.put("error", "Registration failed");
+            return ResponseEntity.badRequest().body(response);
+        }
     }
 }

@@ -1,67 +1,92 @@
 package com.devik.sage.controller;
 
-import com.devik.sage.model.User;
+import com.devik.sage.dto.CommentRequest;
+import com.devik.sage.dto.CommentResponse;
+import com.devik.sage.model.Comment;
 import com.devik.sage.service.CommentService;
-import com.devik.sage.service.UserService;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
 
-@Controller
-@RequestMapping("/comments")
+import java.util.List;
+import java.util.stream.Collectors;
+
+@RestController
+@RequestMapping("/api/comments")
 @RequiredArgsConstructor
+@CrossOrigin(origins = "http://localhost:3000")
 public class CommentController {
 
     private final CommentService commentService;
-    private final UserService userService;
+
+    @GetMapping("/question/{questionId}")
+    public ResponseEntity<List<CommentResponse>> getCommentsByQuestion(@PathVariable Long questionId) {
+        List<Comment> comments = commentService.getCommentsByQuestion(questionId);
+        List<CommentResponse> responses = comments.stream()
+                .map(this::convertToResponse)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
+    }
+
+    @GetMapping("/answer/{answerId}")
+    public ResponseEntity<List<CommentResponse>> getCommentsByAnswer(@PathVariable Long answerId) {
+        List<Comment> comments = commentService.getCommentsByAnswer(answerId);
+        List<CommentResponse> responses = comments.stream()
+                .map(this::convertToResponse)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
+    }
 
     @PostMapping("/question/{questionId}")
-    public String addCommentToQuestion(
+    public ResponseEntity<CommentResponse> createCommentForQuestion(
             @PathVariable Long questionId,
-            @Valid @RequestParam String body,
-            @AuthenticationPrincipal UserDetails userDetails) {
-
-        User currentUser = userService.findByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        commentService.addCommentToQuestion(questionId, body, currentUser);
-
-        return "redirect:/questions/" + questionId;
+            @RequestBody CommentRequest request,
+            Authentication authentication) {
+        String username = authentication.getName();
+        Comment comment = commentService.createCommentForQuestion(questionId, request.getContent(), username);
+        return ResponseEntity.status(HttpStatus.CREATED).body(convertToResponse(comment));
     }
 
     @PostMapping("/answer/{answerId}")
-    public String addCommentToAnswer(
+    public ResponseEntity<CommentResponse> createCommentForAnswer(
             @PathVariable Long answerId,
-            @Valid @RequestParam String body,
-            @AuthenticationPrincipal UserDetails userDetails) {
-
-        User currentUser = userService.findByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        commentService.addCommentToAnswer(answerId, body, currentUser);
-
-        // Get the question ID to redirect back to the question page
-        Long questionId = commentService.getCommentById(answerId).getQuestion().getId();
-
-        return "redirect:/questions/" + questionId;
+            @RequestBody CommentRequest request,
+            Authentication authentication) {
+        String username = authentication.getName();
+        Comment comment = commentService.createCommentForAnswer(answerId, request.getContent(), username);
+        return ResponseEntity.status(HttpStatus.CREATED).body(convertToResponse(comment));
     }
 
-    @PostMapping("/{id}/delete")
-    public String deleteComment(
-            @PathVariable Long id,
-            @AuthenticationPrincipal UserDetails userDetails) {
+    @PutMapping("/{commentId}")
+    public ResponseEntity<CommentResponse> updateComment(
+            @PathVariable Long commentId,
+            @RequestBody CommentRequest request,
+            Authentication authentication) {
+        String username = authentication.getName();
+        Comment comment = commentService.updateComment(commentId, request.getContent(), username);
+        return ResponseEntity.ok(convertToResponse(comment));
+    }
 
-        User currentUser = userService.findByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+    @DeleteMapping("/{commentId}")
+    public ResponseEntity<Void> deleteComment(
+            @PathVariable Long commentId,
+            Authentication authentication) {
+        String username = authentication.getName();
+        commentService.deleteComment(commentId, username);
+        return ResponseEntity.noContent().build();
+    }
 
-        commentService.deleteComment(id, currentUser);
-
-        return "redirect:/questions";
+    private CommentResponse convertToResponse(Comment comment) {
+        CommentResponse response = new CommentResponse();
+        response.setId(comment.getId());
+        response.setContent(comment.getBody());
+        response.setAuthorUsername(comment.getUser().getUsername());
+        response.setAuthorId(comment.getUser().getId());
+        response.setCreatedAt(comment.getCreatedAt());
+        response.setUpdatedAt(comment.getUpdatedAt());
+        response.setIsAuthor(true); // This will be set correctly in the service layer
+        return response;
     }
 }

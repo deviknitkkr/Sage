@@ -10,6 +10,7 @@ import java.util.Optional;
 
 @Repository
 public interface TagRepository extends JpaRepository<Tag, Long> {
+    Optional<Tag> findByName(String name);
     Optional<Tag> findByNameIgnoreCase(String name);
     List<Tag> findByNameContainingIgnoreCase(String name);
     boolean existsByNameIgnoreCase(String name);
@@ -20,4 +21,7 @@ public interface TagRepository extends JpaRepository<Tag, Long> {
     @Query(value = "SELECT t.* FROM tags t JOIN question_tags qt ON t.id = qt.tag_id " +
            "GROUP BY t.id ORDER BY COUNT(qt.question_id) DESC LIMIT ?1", nativeQuery = true)
     List<Tag> findTopTags(int limit);
+
+    @Query(value = "SELECT COUNT(qt.question_id) FROM question_tags qt WHERE qt.tag_id = ?1", nativeQuery = true)
+    Integer countQuestionsByTagId(Long tagId);
 }

@@ -18,6 +18,13 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
     Page<Question> findByUserOrderByCreatedAtDesc(User user, Pageable pageable);
     Page<Question> findByTagsContainsOrderByCreatedAtDesc(Tag tag, Pageable pageable);
 
+    // Search methods needed by service
+    Page<Question> findByTitleContainingIgnoreCaseOrBodyContainingIgnoreCase(
+            String title, String body, Pageable pageable);
+
+    @Query("SELECT q FROM Question q JOIN q.tags t WHERE t.name = :tagName")
+    Page<Question> findByTagsName(@Param("tagName") String tagName, Pageable pageable);
+
     @Query("SELECT q FROM Question q WHERE " +
            "LOWER(q.title) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
            "LOWER(q.body) LIKE LOWER(CONCAT('%', :query, '%'))")
@@ -25,4 +32,8 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
 
     @Query("SELECT q FROM Question q JOIN q.tags t WHERE LOWER(t.name) LIKE LOWER(CONCAT('%', :tagName, '%'))")
     Page<Question> findByTagNameContaining(@Param("tagName") String tagName, Pageable pageable);
+
+    // Add method to count answers without lazy loading
+    @Query("SELECT COUNT(a) FROM Answer a WHERE a.question.id = :questionId")
+    Long countAnswersByQuestionId(@Param("questionId") Long questionId);
 }
