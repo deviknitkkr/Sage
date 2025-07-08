@@ -2,6 +2,28 @@
 
 A modern Stack Overflow-inspired question and answer platform built with Spring Boot and Next.js.
 
+## 📸 Screenshots
+
+### Questions Page
+<img src="screenshots/questions_page.png" alt="Questions Page" width="600">
+
+*Browse and explore questions with filtering, sorting, and search functionality*
+
+### Question & Answer Page
+<img src="screenshots/question_answer_page.png" alt="Question Answer Page" width="600">
+
+*Detailed question view with answers, comments, voting system, and user interactions*
+
+### Ask Question Page
+<img src="screenshots/ask_question_page.png" alt="Ask Question Page" width="600">
+
+*Intuitive question submission form with markdown support and tag selection*
+
+### User Profile Page
+<img src="screenshots/profile_page.png" alt="Profile Page" width="600">
+
+*User profile dashboard with activity history, reputation, badges, and statistics*
+
 ##  Table of Contents
 
 - [Features](#features)
