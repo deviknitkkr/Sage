@@ -7,15 +7,15 @@ import PopularTags from '@/components/popular-tags';
 export default function HomePage() {
   return (
     <div className="max-w-7xl mx-auto">
-      {/* Hero Section */}
-      <div className="flex-1">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center">
-          <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl md:text-6xl">
-            Welcome to Sage
-          </h1>
-          <p className="mt-3 max-w-md mx-auto text-lg text-gray-500 sm:text-xl md:mt-5 md:max-w-3xl">
-            Ask questions, share knowledge, and learn from the community
-          </p>
+      {/* Header Section */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Welcome to Sage</h1>
+            <p className="text-gray-600 mt-2">
+              Ask questions, share knowledge, and learn from the community
+            </p>
+          </div>
         </div>
       </div>
 

@@ -31,7 +31,7 @@ export default function QuestionsFeed({ filter }: QuestionsFeedProps) {
   const loadQuestions = async (page: number = 0, currentFilter: string) => {
     try {
       setLoading(true);
-      const response = await questionService.getQuestions(page, 10, currentFilter === 'all' ? 'new' : currentFilter);
+      const response = await questionService.getQuestions(page, 10);
       setQuestions(response.content);
       setTotalPages(response.totalPages);
       setTotalElements(response.totalElements);
@@ -93,21 +93,16 @@ export default function QuestionsFeed({ filter }: QuestionsFeedProps) {
                           remarkPlugins={[remarkGfm]}
                           components={{
                             p: ({ children }) => <span>{children}</span>,
-                            code: ({ children, inline }) => (
+                            code: ({ children }) => (
                               <code className="bg-gray-100 px-2 py-1 rounded text-xs font-mono">{children}</code>
                             ),
                             pre: ({ children }) => <span>{children}</span>,
-                            strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-                            em: ({ children }) => <em className="italic">{children}</em>,
                             h1: ({ children }) => <span className="font-semibold">{children}</span>,
                             h2: ({ children }) => <span className="font-semibold">{children}</span>,
                             h3: ({ children }) => <span className="font-semibold">{children}</span>,
                             h4: ({ children }) => <span className="font-semibold">{children}</span>,
-                            h5: ({ children }) => <span className="font-semibold">{children}</span>,
-                            h6: ({ children }) => <span className="font-semibold">{children}</span>,
                             ul: ({ children }) => <span>{children}</span>,
                             ol: ({ children }) => <span>{children}</span>,
-                            li: ({ children }) => <span>{children} </span>,
                             blockquote: ({ children }) => <span className="italic text-gray-500">{children}</span>,
                           }}
                         >
@@ -156,14 +151,13 @@ export default function QuestionsFeed({ filter }: QuestionsFeedProps) {
             ))}
           </div>
 
+          {/* Pagination Component */}
           {totalPages > 1 && (
-            <div className="mt-12 flex justify-center">
+            <div className="mt-8 flex justify-center">
               <Pagination
                 currentPage={currentPage}
                 totalPages={totalPages}
-                totalElements={totalElements}
                 onPageChange={handlePageChange}
-                loading={loading}
               />
             </div>
           )}
